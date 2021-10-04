@@ -10,7 +10,7 @@ use std::{
 use crate::Windows::Win32::{
   Foundation as w32f,
   Graphics::Gdi as w32gdi,
-  System::{Com, LibraryLoader},
+  System::LibraryLoader,
   UI::{Controls, WindowsAndMessaging as w32wm},
 };
 use crate::{
@@ -148,13 +148,10 @@ impl Notification {
       );
 
       if hwnd.is_invalid() {
-        //
+        return Err(windows::Error::from_win32());
       }
 
-      // skip notificcation window from taskbar
-      let _ = Com::CoInitialize(std::ptr::null());
-      util::skip_taskbar(hwnd);
-
+      util::skip_taskbar(hwnd)?;
       w32wm::ShowWindow(hwnd, w32wm::SW_SHOWDEFAULT);
 
       let timeout = self.timeout;

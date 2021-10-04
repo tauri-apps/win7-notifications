@@ -78,11 +78,12 @@ pub unsafe fn get_monitor_info(hmonitor: w32gdi::HMONITOR) -> w32gdi::MONITORINF
   monitor_info
 }
 
-pub unsafe fn skip_taskbar(hwnd: w32f::HWND) {
+pub unsafe fn skip_taskbar(hwnd: w32f::HWND) -> Result<()> {
+  let _ = Com::CoInitialize(std::ptr::null());
   let taskbar_list: Shell::ITaskbarList =
-    Com::CoCreateInstance(&Shell::TaskbarList, None, Com::CLSCTX_SERVER)
-      .expect("failed to create TaskBarList");
-  taskbar_list.DeleteTab(hwnd).expect("DeleteTab failed");
+    Com::CoCreateInstance(&Shell::TaskbarList, None, Com::CLSCTX_SERVER)?;
+  taskbar_list.DeleteTab(hwnd)?;
+  Ok(())
 }
 
 pub unsafe fn set_font(hdc: w32gdi::HDC, name: &str, size: i32, weight: i32) {
