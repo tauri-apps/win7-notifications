@@ -7,15 +7,15 @@ use std::{
   time::Duration,
 };
 
-use crate::{
-  timeout::Timeout,
-  util::{self, Color},
-};
-use bindings::Windows::Win32::{
+use crate::Windows::Win32::{
   Foundation as w32f,
   Graphics::Gdi as w32gdi,
   System::{Com, LibraryLoader},
   UI::{Controls, WindowsAndMessaging as w32wm},
+};
+use crate::{
+  timeout::Timeout,
+  util::{self, Color},
 };
 use windows::*;
 

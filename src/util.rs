@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use bindings::Windows::Win32::{
+use crate::Windows::Win32::{
   Foundation as w32f,
   Graphics::Gdi as w32gdi,
   System::Com,

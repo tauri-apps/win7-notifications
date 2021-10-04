@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
+windows::include_bindings!();
+
 mod notification;
 mod timeout;
 mod util;

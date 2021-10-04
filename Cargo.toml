@@ -11,8 +11,10 @@ repository = "https://github.com/tauri-apps/win7-notifications"
 documentation = "https://docs.rs/win7-notifications"
 categories = [ "gui" ]
 
+[build-dependencies]
+windows = "0.21.1"
+
 [dependencies]
-bindings = { path = "bindings" }
 windows = "0.21.1"
 
 [dev-dependencies]
