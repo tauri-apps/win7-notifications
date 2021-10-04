@@ -32,7 +32,7 @@ const WND_CLR: Color = Color(50, 57, 69);
 /// used for notification summary(title)
 const TITILE_CLR: Color = Color(255, 255, 255);
 /// used for notification body
-const SUBTITLE_CLR: Color = Color(255, 255, 255);
+const SUBTITLE_CLR: Color = Color(175, 175, 175);
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
