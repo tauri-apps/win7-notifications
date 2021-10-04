@@ -1,5 +1,6 @@
 // Copyright 2019-2021 Tauri Programme within The Commons Conservancy
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 
 /// Describes the timeout of a notification
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
