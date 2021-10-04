@@ -12,6 +12,7 @@ This crate requires a win32 event loop to be running, otherwise the notification
 ### TODO:
 - [ ] Move old notifications above new ones.
 - [ ] Animations
+- [ ] Sounds
 - [ ] Shadows
 - [ ] Change close button color when mouse hovers.
 - [ ] Callbacks for when close button or body of notification is clicked.
