@@ -127,7 +127,7 @@ impl Notification {
         appname_control: w32f::HWND::default(),
         summary_control: w32f::HWND::default(),
         body_control: w32f::HWND::default(),
-        mouse_hovering_close_btn: false,
+        _mouse_hovering_close_btn: false,
         notification: self.clone(),
       };
 
@@ -176,7 +176,7 @@ struct WindowData {
   appname_control: w32f::HWND,
   body_control: w32f::HWND,
   summary_control: w32f::HWND,
-  mouse_hovering_close_btn: bool,
+  _mouse_hovering_close_btn: bool,
   notification: Notification,
 }
 
@@ -368,7 +368,7 @@ pub unsafe extern "system" fn window_proc(
           w32gdi::HBRUSH::default(),
           w32wm::DI_NORMAL,
         );
-        w32gdi::EndPaint(hwnd, &mut ps);
+        w32gdi::EndPaint(hwnd, &ps);
       }
 
       w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)

@@ -24,7 +24,7 @@ pub struct Color(pub u32, pub u32, pub u32);
 impl Color {
   /// conver Color to a integer based color
   pub fn to_int(&self) -> u32 {
-    (self.0 << 0) | (self.1 << 8) | (self.2 << 16)
+    self.0 | (self.1 << 8) | (self.2 << 16)
   }
 }
 
