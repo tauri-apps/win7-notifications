@@ -131,10 +131,10 @@ impl Notification {
 
       // cache primary monitor info
       let mut pm = PRIMARY_MONITOR.lock().unwrap();
-      let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
-      if bottom == 0 {
+      if pm.__AnonymousBase_winuser_L13558_C43.rcWork.bottom == 0 {
         *pm = util::get_monitor_info(util::primary_monitor());
       }
+      let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
 
       let data = WindowData {
         window: w32f::HWND::default(),
@@ -186,7 +186,7 @@ impl Notification {
       Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
 
       util::skip_taskbar(hwnd)?;
-      w32wm::ShowWindow(hwnd, w32wm::SW_SHOWDEFAULT);
+      w32wm::ShowWindow(hwnd, w32wm::SW_SHOW);
       Debug::MessageBeep(w32wm::MB_OK.0);
 
       let timeout = self.timeout;
