@@ -1,5 +1,10 @@
 # Changelog
 
+## \[0.2.1]
+
+- Fix first notification not showing.
+  - [78533c5](https://github.com/tauri-apps/win7-notifications/commit/78533c59ca880a699d4d312f03fe635b6f287371) fix: first notification not showing on 2021-10-05
+
 ## \[0.2.0]
 
 - Move old notifications above new ones
