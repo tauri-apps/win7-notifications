@@ -1,5 +1,10 @@
 # Changelog
 
+## \[0.2.2]
+
+- Check if DWM is enabled or not before adding shadows.
+  - [84a9556](https://github.com/tauri-apps/win7-notifications/commit/84a9556aaa239caead8b7111796047a438845be9) fix: check if dwm is enabled before adding shadows on 2021-10-05
+
 ## \[0.2.1]
 
 - Fix first notification not showing.
