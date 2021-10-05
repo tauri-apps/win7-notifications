@@ -130,74 +130,76 @@ impl Notification {
       w32wm::RegisterClassW(&wnd_class);
 
       // cache primary monitor info
-      let mut pm = PRIMARY_MONITOR.lock().unwrap();
-      if pm.__AnonymousBase_winuser_L13558_C43.rcWork.bottom == 0 {
-        *pm = util::get_monitor_info(util::primary_monitor());
-      }
-      let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
+      if let Ok(mut pm) = PRIMARY_MONITOR.lock() {
+        if pm.__AnonymousBase_winuser_L13558_C43.rcWork.bottom == 0 {
+          *pm = util::get_monitor_info(util::primary_monitor());
+        }
+        let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
 
-      let data = WindowData {
-        window: w32f::HWND::default(),
-        close_btn: w32f::HWND::default(),
-        appname_control: w32f::HWND::default(),
-        summary_control: w32f::HWND::default(),
-        body_control: w32f::HWND::default(),
-        _mouse_hovering_close_btn: false,
-        notification: self.clone(),
-      };
-
-      let hwnd = w32wm::CreateWindowExW(
-        w32wm::WS_EX_TOPMOST,
-        w32f::PWSTR(class_name.as_mut_ptr() as _),
-        "win7-notify-rust-window",
-        w32wm::WS_SYSMENU | w32wm::WS_CAPTION | w32wm::WS_VISIBLE,
-        right - NOTI_W - 15,
-        bottom - NOTI_H - 15,
-        NOTI_W,
-        NOTI_H,
-        w32f::HWND::default(),
-        w32wm::HMENU::default(),
-        hinstance,
-        Box::into_raw(Box::new(data)) as _,
-      );
-
-      if hwnd.is_invalid() {
-        return Err(windows::Error::from_win32());
-      }
-
-      // re-order active notifications and make room for new one
-      let mut active_noti = ACTIVE_NOTIFICATIONS.lock().unwrap();
-      for (i, h) in active_noti.iter().rev().enumerate() {
-        w32wm::SetWindowPos(
-          h,
-          w32f::HWND::default(),
-          right - NOTI_W - 15,
-          bottom - (NOTI_H * (i + 2) as i32) - 15,
-          0,
-          0,
-          w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
-        );
-      }
-      active_noti.push(hwnd);
-
-      // shadows
-      if Dwm::DwmIsCompositionEnabled()?.as_bool() {
-        let mut margins = Controls::MARGINS::default();
-        margins.cxLeftWidth = 1;
-        Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
-      }
-
-      util::skip_taskbar(hwnd)?;
-      w32wm::ShowWindow(hwnd, w32wm::SW_SHOW);
-      Debug::MessageBeep(w32wm::MB_OK.0);
-
-      let timeout = self.timeout;
-      spawn(move || {
-        sleep(Duration::from_millis(timeout.into()));
-        if timeout != Timeout::Never {
-          close_notification(hwnd);
+        let data = WindowData {
+          window: w32f::HWND::default(),
+          close_btn: w32f::HWND::default(),
+          appname_control: w32f::HWND::default(),
+          summary_control: w32f::HWND::default(),
+          body_control: w32f::HWND::default(),
+          _mouse_hovering_close_btn: false,
+          notification: self.clone(),
         };
-      });
+
+        let hwnd = w32wm::CreateWindowExW(
+          w32wm::WS_EX_TOPMOST,
+          w32f::PWSTR(class_name.as_mut_ptr() as _),
+          "win7-notify-rust-window",
+          w32wm::WS_SYSMENU | w32wm::WS_CAPTION | w32wm::WS_VISIBLE,
+          right - NOTI_W - 15,
+          bottom - NOTI_H - 15,
+          NOTI_W,
+          NOTI_H,
+          w32f::HWND::default(),
+          w32wm::HMENU::default(),
+          hinstance,
+          Box::into_raw(Box::new(data)) as _,
+        );
+
+        if hwnd.is_invalid() {
+          return Err(windows::Error::from_win32());
+        }
+
+        // re-order active notifications and make room for new one
+        if let Ok(mut active_noti) = ACTIVE_NOTIFICATIONS.lock() {
+          for (i, h) in active_noti.iter().rev().enumerate() {
+            w32wm::SetWindowPos(
+              h,
+              w32f::HWND::default(),
+              right - NOTI_W - 15,
+              bottom - (NOTI_H * (i + 2) as i32) - 15,
+              0,
+              0,
+              w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
+            );
+          }
+          active_noti.push(hwnd);
+        }
+
+        // shadows
+        if Dwm::DwmIsCompositionEnabled()?.as_bool() {
+          let mut margins = Controls::MARGINS::default();
+          margins.cxLeftWidth = 1;
+          Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
+        }
+
+        util::skip_taskbar(hwnd)?;
+        w32wm::ShowWindow(hwnd, w32wm::SW_SHOW);
+        Debug::MessageBeep(w32wm::MB_OK.0);
+
+        let timeout = self.timeout;
+        spawn(move || {
+          sleep(Duration::from_millis(timeout.into()));
+          if timeout != Timeout::Never {
+            close_notification(hwnd);
+          };
+        });
+      }
     }
 
     Ok(())
@@ -416,25 +418,25 @@ unsafe fn close_notification(hwnd: w32f::HWND) {
   w32wm::CloseWindow(hwnd);
 
   // remove notification from our cache
-  let mut active_noti = ACTIVE_NOTIFICATIONS.lock().unwrap();
-  let index = active_noti.iter().position(|e| *e == hwnd).unwrap();
-  active_noti.remove(index);
+  if let Ok(mut active_noti) = ACTIVE_NOTIFICATIONS.lock() {
+    if let Some(index) = active_noti.iter().position(|e| *e == hwnd) {
+      active_noti.remove(index);
+    }
 
-  // re-order notifications
-  let w32f::RECT { right, bottom, .. } = PRIMARY_MONITOR
-    .lock()
-    .unwrap()
-    .__AnonymousBase_winuser_L13558_C43
-    .rcWork;
-  for (i, h) in active_noti.iter().rev().enumerate() {
-    w32wm::SetWindowPos(
-      h,
-      w32f::HWND::default(),
-      right - NOTI_W - 15,
-      bottom - (NOTI_H * (i + 1) as i32) - 15,
-      0,
-      0,
-      w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
-    );
+    // re-order notifications
+    if let Ok(pm) = PRIMARY_MONITOR.lock() {
+      let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
+      for (i, h) in active_noti.iter().rev().enumerate() {
+        w32wm::SetWindowPos(
+          h,
+          w32f::HWND::default(),
+          right - NOTI_W - 15,
+          bottom - (NOTI_H * (i + 1) as i32) - 15,
+          0,
+          0,
+          w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
+        );
+      }
+    }
   }
 }
