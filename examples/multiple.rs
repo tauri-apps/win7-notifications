@@ -9,38 +9,16 @@ fn main() {
 
   event_loop.run(move |event, _, _| match event {
     Event::NewEvents(e) if e == StartCause::Init => {
-      Notification::new()
-        .appname("App name")
-        .summary("Critical Error")
-        .body("Just kidding, this is just the notification example 1.")
-        .icon(icon.to_vec())
-        .timeout(Timeout::Never)
-        .show()
-        .unwrap();
-      Notification::new()
-        .appname("App name")
-        .summary("Critical Error")
-        .body("Just kidding, this is just the notification example 2.")
-        .icon(icon.to_vec())
-        .timeout(Timeout::Default)
-        .show()
-        .unwrap();
-      Notification::new()
-        .appname("App name")
-        .summary("Critical Error")
-        .body("Just kidding, this is just the notification example 3.")
-        .icon(icon.to_vec())
-        .timeout(Timeout::Never)
-        .show()
-        .unwrap();
-      Notification::new()
-        .appname("App name")
-        .summary("Critical Error")
-        .body("Just kidding, this is just the notification example 4.")
-        .icon(icon.to_vec())
-        .timeout(Timeout::Default)
-        .show()
-        .unwrap();
+      for i in 1..4 {
+        Notification::new()
+          .appname("App name")
+          .summary("Critical Error")
+          .body(format!("Just kidding, this is just the notification example {}.", i).as_str())
+          .icon(icon.to_vec())
+          .timeout(Timeout::Default)
+          .show()
+          .unwrap();
+      }
     }
     _ => (),
   });

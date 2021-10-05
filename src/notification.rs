@@ -12,7 +12,7 @@ use crate::Windows::Win32::{
   Foundation as w32f,
   Graphics::Dwm,
   Graphics::Gdi,
-  System::LibraryLoader,
+  System::{Diagnostics::Debug, LibraryLoader},
   UI::{Controls, WindowsAndMessaging as w32wm},
 };
 use crate::{
@@ -186,6 +186,7 @@ impl Notification {
 
       util::skip_taskbar(hwnd)?;
       w32wm::ShowWindow(hwnd, w32wm::SW_SHOWDEFAULT);
+      Debug::MessageBeep(w32wm::MB_OK.0);
 
       let timeout = self.timeout;
       spawn(move || {
