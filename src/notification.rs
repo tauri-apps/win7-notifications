@@ -44,6 +44,7 @@ static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<w32f::HWND>>> = Lazy::new(|| Mutex::
 static PRIMARY_MONITOR: Lazy<Mutex<Gdi::MONITORINFOEXW>> =
   Lazy::new(|| Mutex::new(Gdi::MONITORINFOEXW::default()));
 
+/// Describes The notification
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Notification {
