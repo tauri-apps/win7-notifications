@@ -8,6 +8,7 @@ fn main() {
       Windows::Win32::System::LibraryLoader::{GetModuleHandleW},
       Windows::Win32::System::Com::{CoCreateInstance, CoInitialize},
       Windows::Win32::Graphics::Gdi::*,
+      Windows::Win32::Graphics::Dwm::*,
       Windows::Win32::UI::Shell::{ITaskbarList, TaskbarList},
       Windows::Win32::UI::Controls::*,
       Windows::Win32::UI::WindowsAndMessaging::*,

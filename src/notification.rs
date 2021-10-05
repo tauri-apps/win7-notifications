@@ -9,7 +9,8 @@ use std::{
 
 use crate::Windows::Win32::{
   Foundation as w32f,
-  Graphics::Gdi as w32gdi,
+  Graphics::Dwm,
+  Graphics::Gdi,
   System::LibraryLoader,
   UI::{Controls, WindowsAndMessaging as w32wm},
 };
@@ -114,7 +115,7 @@ impl Notification {
         lpfnWndProc: Some(window_proc),
         lpszClassName: w32f::PWSTR(class_name.as_mut_ptr() as _),
         hInstance: hinstance,
-        hbrBackground: w32gdi::CreateSolidBrush(WND_CLR.to_int()),
+        hbrBackground: Gdi::CreateSolidBrush(WND_CLR.to_int()),
         ..Default::default()
       };
       w32wm::RegisterClassW(&wnd_class);
@@ -150,6 +151,15 @@ impl Notification {
       if hwnd.is_invalid() {
         return Err(windows::Error::from_win32());
       }
+
+      // shadows
+      let margins = Controls::MARGINS {
+        cxLeftWidth: 1,
+        cxRightWidth: 0,
+        cyBottomHeight: 0,
+        cyTopHeight: 0,
+      };
+      Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
 
       util::skip_taskbar(hwnd)?;
       w32wm::ShowWindow(hwnd, w32wm::SW_SHOWDEFAULT);
@@ -278,7 +288,7 @@ pub unsafe extern "system" fn window_proc(
 
       if lparam.0 == (*userdata).close_btn.0 {
         // change the close button control background color to match the window color
-        return w32f::LRESULT(w32gdi::CreateSolidBrush(WND_CLR.to_int()).0 as _);
+        return w32f::LRESULT(Gdi::CreateSolidBrush(WND_CLR.to_int()).0 as _);
       }
 
       w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
@@ -288,19 +298,19 @@ pub unsafe extern "system" fn window_proc(
       let userdata = userdata as *mut WindowData;
       let lpds = lparam.0 as *mut Controls::DRAWITEMSTRUCT;
 
-      w32gdi::SetBkMode((*lpds).hDC, w32gdi::TRANSPARENT);
+      Gdi::SetBkMode((*lpds).hDC, Gdi::TRANSPARENT);
 
       // draw notification close button
       if (*lpds).hwndItem == (*userdata).close_btn {
-        w32gdi::SetTextColor((*lpds).hDC, Color(150, 150, 150).to_int());
-        w32gdi::TextOutW((*lpds).hDC, 5, 1, "x", 1);
+        Gdi::SetTextColor((*lpds).hDC, Color(150, 150, 150).to_int());
+        Gdi::TextOutW((*lpds).hDC, 5, 1, "x", 1);
       }
 
       // draw notification app name
       if (*lpds).hwndItem == (*userdata).appname_control {
         util::set_font((*lpds).hDC, "Segeo UI", 15, 400);
-        w32gdi::SetTextColor((*lpds).hDC, TITILE_CLR.to_int());
-        w32gdi::TextOutW(
+        Gdi::SetTextColor((*lpds).hDC, TITILE_CLR.to_int());
+        Gdi::TextOutW(
           (*lpds).hDC,
           5,
           1,
@@ -312,8 +322,8 @@ pub unsafe extern "system" fn window_proc(
       // draw notification summary (title)
       if (*lpds).hwndItem == (*userdata).summary_control {
         util::set_font((*lpds).hDC, "Segeo UI", 18, 700);
-        w32gdi::SetTextColor((*lpds).hDC, TITILE_CLR.to_int());
-        w32gdi::TextOutW(
+        Gdi::SetTextColor((*lpds).hDC, TITILE_CLR.to_int());
+        Gdi::TextOutW(
           (*lpds).hDC,
           0,
           0,
@@ -325,15 +335,15 @@ pub unsafe extern "system" fn window_proc(
       // draw notification body
       if (*lpds).hwndItem == (*userdata).body_control {
         util::set_font((*lpds).hDC, "Segeo UI", 18, 400);
-        w32gdi::SetTextColor((*lpds).hDC, SUBTITLE_CLR.to_int());
+        Gdi::SetTextColor((*lpds).hDC, SUBTITLE_CLR.to_int());
         let mut rc = w32f::RECT::default();
         w32wm::GetClientRect((*lpds).hwndItem, &mut rc);
-        w32gdi::DrawTextW(
+        Gdi::DrawTextW(
           (*lpds).hDC,
           (*userdata).notification.body.clone(),
           (*userdata).notification.body.len() as _,
           &mut rc,
-          w32gdi::DT_LEFT | w32gdi::DT_EXTERNALLEADING | w32gdi::DT_WORDBREAK,
+          Gdi::DT_LEFT | Gdi::DT_EXTERNALLEADING | Gdi::DT_WORDBREAK,
         );
       }
 
@@ -353,8 +363,8 @@ pub unsafe extern "system" fn window_proc(
 
       // draw notification icon
       if let Some(hicon) = util::get_hicon_from_buffer(&(*userdata).notification.icon, 16, 16) {
-        let mut ps = w32gdi::PAINTSTRUCT::default();
-        let hdc = w32gdi::BeginPaint(hwnd, &mut ps);
+        let mut ps = Gdi::PAINTSTRUCT::default();
+        let hdc = Gdi::BeginPaint(hwnd, &mut ps);
         w32wm::DrawIconEx(
           hdc,
           NOTI_M,
@@ -363,10 +373,10 @@ pub unsafe extern "system" fn window_proc(
           NOTI_ICON_S,
           NOTI_ICON_S,
           0,
-          w32gdi::HBRUSH::default(),
+          Gdi::HBRUSH::default(),
           w32wm::DI_NORMAL,
         );
-        w32gdi::EndPaint(hwnd, &ps);
+        Gdi::EndPaint(hwnd, &ps);
       }
 
       w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)

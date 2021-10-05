@@ -4,7 +4,7 @@
 
 use crate::Windows::Win32::{
   Foundation as w32f,
-  Graphics::Gdi as w32gdi,
+  Graphics::Gdi,
   System::Com,
   UI::{Controls, Shell, WindowsAndMessaging as w32wm},
 };
@@ -62,18 +62,18 @@ pub fn get_loword(dword: u32) -> u16 {
   (dword & 0xFFFF) as u16
 }
 
-pub unsafe fn primary_monitor() -> w32gdi::HMONITOR {
+pub unsafe fn primary_monitor() -> Gdi::HMONITOR {
   let pt = w32f::POINT { x: 0, y: 0 };
-  w32gdi::MonitorFromPoint(&pt, w32gdi::MONITOR_DEFAULTTOPRIMARY)
+  Gdi::MonitorFromPoint(&pt, Gdi::MONITOR_DEFAULTTOPRIMARY)
 }
 
-pub unsafe fn get_monitor_info(hmonitor: w32gdi::HMONITOR) -> w32gdi::MONITORINFOEXW {
-  let mut monitor_info = w32gdi::MONITORINFOEXW::default();
+pub unsafe fn get_monitor_info(hmonitor: Gdi::HMONITOR) -> Gdi::MONITORINFOEXW {
+  let mut monitor_info = Gdi::MONITORINFOEXW::default();
   monitor_info.__AnonymousBase_winuser_L13558_C43.cbSize =
-    std::mem::size_of::<w32gdi::MONITORINFOEXW>() as u32;
-  w32gdi::GetMonitorInfoW(
+    std::mem::size_of::<Gdi::MONITORINFOEXW>() as u32;
+  Gdi::GetMonitorInfoW(
     hmonitor,
-    &mut monitor_info as *mut w32gdi::MONITORINFOEXW as *mut w32gdi::MONITORINFO,
+    &mut monitor_info as *mut Gdi::MONITORINFOEXW as *mut Gdi::MONITORINFO,
   );
   monitor_info
 }
@@ -86,8 +86,8 @@ pub unsafe fn skip_taskbar(hwnd: w32f::HWND) -> Result<()> {
   Ok(())
 }
 
-pub unsafe fn set_font(hdc: w32gdi::HDC, name: &str, size: i32, weight: i32) {
-  let hfont = w32gdi::CreateFontW(
+pub unsafe fn set_font(hdc: Gdi::HDC, name: &str, size: i32, weight: i32) {
+  let hfont = Gdi::CreateFontW(
     size,
     0,
     0,
@@ -96,14 +96,14 @@ pub unsafe fn set_font(hdc: w32gdi::HDC, name: &str, size: i32, weight: i32) {
     false.into(),
     false.into(),
     false.into(),
-    w32gdi::DEFAULT_CHARSET,
-    w32gdi::OUT_DEFAULT_PRECIS,
-    w32gdi::CLIP_DEFAULT_PRECIS,
-    w32gdi::CLEARTYPE_QUALITY,
-    w32gdi::FF_DONTCARE,
+    Gdi::DEFAULT_CHARSET,
+    Gdi::OUT_DEFAULT_PRECIS,
+    Gdi::CLIP_DEFAULT_PRECIS,
+    Gdi::CLEARTYPE_QUALITY,
+    Gdi::FF_DONTCARE,
     name,
   );
-  w32gdi::SelectObject(hdc, hfont);
+  Gdi::SelectObject(hdc, hfont);
 }
 
 pub fn get_hicon_from_buffer(buffer: &[u8], width: i32, height: i32) -> Option<w32wm::HICON> {
