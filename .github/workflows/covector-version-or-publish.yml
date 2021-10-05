@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: cargo login
-        run: cargo login ${{ secrets.CRATE_TOKEN }}
+        run: cargo login ${{ secrets.ORG_CRATE_TOKEN }}
       - name: git config
         run: |
           git config --global user.name "${{ github.event.pusher.name }}"
@@ -32,7 +32,7 @@ jobs:
           CARGO_AUDIT_OPTIONS: ${{ secrets.CARGO_AUDIT_OPTIONS }}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          command: 'version-or-publish'
+          command: "version-or-publish"
           createRelease: true
       - name: Create Pull Request With Versions Bumped
         id: cpr

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use std::{
+  sync::Mutex,
   thread::{sleep, spawn},
   time::Duration,
 };
@@ -18,8 +19,10 @@ use crate::{
   timeout::Timeout,
   util::{self, Color},
 };
+use once_cell::sync::Lazy;
 use windows::*;
 
+/// Close button callback id
 const CLOSE_BTN_ID: isize = 554;
 /// notification width
 const NOTI_W: i32 = 360;
@@ -35,6 +38,11 @@ const WND_CLR: Color = Color(50, 57, 69);
 const TITILE_CLR: Color = Color(255, 255, 255);
 /// used for notification body
 const SUBTITLE_CLR: Color = Color(175, 175, 175);
+/// used to track existing notifications
+static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<w32f::HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
+/// cached primary monitor info
+static PRIMARY_MONITOR: Lazy<Mutex<Gdi::MONITORINFOEXW>> =
+  Lazy::new(|| Mutex::new(Gdi::MONITORINFOEXW::default()));
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -120,8 +128,12 @@ impl Notification {
       };
       w32wm::RegisterClassW(&wnd_class);
 
-      let monitor_info = util::get_monitor_info(util::primary_monitor());
-      let w32f::RECT { right, bottom, .. } = monitor_info.__AnonymousBase_winuser_L13558_C43.rcWork;
+      // cache primary monitor info
+      let mut pm = PRIMARY_MONITOR.lock().unwrap();
+      let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
+      if bottom == 0 {
+        *pm = util::get_monitor_info(util::primary_monitor());
+      }
 
       let data = WindowData {
         window: w32f::HWND::default(),
@@ -152,13 +164,24 @@ impl Notification {
         return Err(windows::Error::from_win32());
       }
 
+      // re-order active notifications and make room for new one
+      let mut active_noti = ACTIVE_NOTIFICATIONS.lock().unwrap();
+      for (i, h) in active_noti.iter().rev().enumerate() {
+        w32wm::SetWindowPos(
+          h,
+          w32f::HWND::default(),
+          right - NOTI_W - 15,
+          bottom - (NOTI_H * (i + 2) as i32) - 15,
+          0,
+          0,
+          w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
+        );
+      }
+      active_noti.push(hwnd);
+
       // shadows
-      let margins = Controls::MARGINS {
-        cxLeftWidth: 1,
-        cxRightWidth: 0,
-        cyBottomHeight: 0,
-        cyTopHeight: 0,
-      };
+      let mut margins = Controls::MARGINS::default();
+      margins.cxLeftWidth = 1;
       Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
 
       util::skip_taskbar(hwnd)?;
@@ -168,8 +191,7 @@ impl Notification {
       spawn(move || {
         sleep(Duration::from_millis(timeout.into()));
         if timeout != Timeout::Never {
-          w32wm::ShowWindow(hwnd, w32wm::SW_HIDE);
-          w32wm::CloseWindow(hwnd);
+          close_notification(hwnd);
         };
       });
     }
@@ -352,8 +374,8 @@ pub unsafe extern "system" fn window_proc(
 
     w32wm::WM_COMMAND => {
       if util::get_loword(wparam.0 as _) == CLOSE_BTN_ID as u16 {
-        w32wm::ShowWindow(hwnd, w32wm::SW_HIDE);
-        w32wm::CloseWindow(hwnd);
+        let userdata = userdata as *mut WindowData;
+        close_notification((*userdata).window)
       }
       w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
     }
@@ -382,5 +404,33 @@ pub unsafe extern "system" fn window_proc(
       w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
     }
     _ => w32wm::DefWindowProcW(hwnd, msg, wparam, lparam),
+  }
+}
+
+unsafe fn close_notification(hwnd: w32f::HWND) {
+  w32wm::ShowWindow(hwnd, w32wm::SW_HIDE);
+  w32wm::CloseWindow(hwnd);
+
+  // remove notification from our cache
+  let mut active_noti = ACTIVE_NOTIFICATIONS.lock().unwrap();
+  let index = active_noti.iter().position(|e| *e == hwnd).unwrap();
+  active_noti.remove(index);
+
+  // re-order notifications
+  let w32f::RECT { right, bottom, .. } = PRIMARY_MONITOR
+    .lock()
+    .unwrap()
+    .__AnonymousBase_winuser_L13558_C43
+    .rcWork;
+  for (i, h) in active_noti.iter().rev().enumerate() {
+    w32wm::SetWindowPos(
+      h,
+      w32f::HWND::default(),
+      right - NOTI_W - 15,
+      bottom - (NOTI_H * (i + 1) as i32) - 15,
+      0,
+      0,
+      w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
+    );
   }
 }
