@@ -9,7 +9,7 @@ fn main() {
       Windows::Win32::System::Com::{CoCreateInstance, CoInitialize},
       Windows::Win32::System::Diagnostics::Debug::MessageBeep,
       Windows::Win32::Graphics::Gdi::*,
-      Windows::Win32::Graphics::Dwm::{DwmExtendFrameIntoClientArea},
+      Windows::Win32::Graphics::Dwm::{DwmExtendFrameIntoClientArea,DwmIsCompositionEnabled},
       Windows::Win32::UI::Shell::{ITaskbarList, TaskbarList},
       Windows::Win32::UI::Controls::*,
       Windows::Win32::UI::WindowsAndMessaging::*,

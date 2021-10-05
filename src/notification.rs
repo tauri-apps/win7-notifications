@@ -181,9 +181,11 @@ impl Notification {
       active_noti.push(hwnd);
 
       // shadows
-      let mut margins = Controls::MARGINS::default();
-      margins.cxLeftWidth = 1;
-      Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
+      if Dwm::DwmIsCompositionEnabled()?.as_bool() {
+        let mut margins = Controls::MARGINS::default();
+        margins.cxLeftWidth = 1;
+        Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
+      }
 
       util::skip_taskbar(hwnd)?;
       w32wm::ShowWindow(hwnd, w32wm::SW_SHOW);
