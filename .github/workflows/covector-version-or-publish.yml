@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - run: rustup update
       - name: cargo login
         run: cargo login ${{ secrets.CRATE_TOKEN }}
       - name: git config
