@@ -114,7 +114,7 @@ impl Notification {
 
   /// Shows the Notification.
   ///
-  /// Requires an win32 event_loop to be running, otherwise the notification will close immediately.
+  /// Requires an win32 event_loop to be running on the thread, otherwise the notification will close immediately.
   pub fn show(&self) -> Result<()> {
     unsafe {
       let hinstance = LibraryLoader::GetModuleHandleW(w32f::PWSTR::default());

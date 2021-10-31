@@ -4,6 +4,12 @@
 
 //! Send Windows 10 styled notifications on Windows 7.
 //!
+//! # Note:
+//!
+//! This crate requires a win32 event loop to be running on the thread, otherwise the notification will close immediately,
+//! it is recommended to use it with other win32 event loop crates like [tao](https://docs.rs/tao) or
+//! [winit](https://docs.rs/winit) or just roll your own win32 event loop.
+//!
 //! # Examples
 //!
 //! # Example 1: Simple Notification
