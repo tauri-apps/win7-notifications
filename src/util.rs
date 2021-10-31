@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use crate::Windows::Win32::{
-  Foundation as w32f,
-  Graphics::Gdi,
-  System::Com,
-  UI::{Controls, Shell, WindowsAndMessaging as w32wm},
+use windows::{
+  runtime::*,
+  Win32::{
+    Foundation as w32f,
+    Graphics::Gdi,
+    System::Com,
+    UI::{Controls, Shell, WindowsAndMessaging as w32wm},
+  },
 };
-use windows::*;
 
 pub fn current_exe_name() -> String {
   std::env::current_exe()
@@ -69,7 +71,7 @@ pub unsafe fn primary_monitor() -> Gdi::HMONITOR {
 
 pub unsafe fn get_monitor_info(hmonitor: Gdi::HMONITOR) -> Gdi::MONITORINFOEXW {
   let mut monitor_info = Gdi::MONITORINFOEXW::default();
-  monitor_info.__AnonymousBase_winuser_L13558_C43.cbSize =
+  monitor_info.__AnonymousBase_winuser_L13571_C43.cbSize =
     std::mem::size_of::<Gdi::MONITORINFOEXW>() as u32;
   Gdi::GetMonitorInfoW(
     hmonitor,

@@ -2,25 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
+use once_cell::sync::Lazy;
 use std::{
   sync::Mutex,
   thread::{sleep, spawn},
   time::Duration,
 };
-
-use crate::Windows::Win32::{
-  Foundation as w32f,
-  Graphics::Dwm,
-  Graphics::Gdi,
-  System::{Diagnostics::Debug, LibraryLoader},
-  UI::{Controls, WindowsAndMessaging as w32wm},
+use windows::{
+  runtime::*,
+  Win32::{
+    Foundation as w32f,
+    Graphics::Dwm,
+    Graphics::Gdi,
+    System::{Diagnostics::Debug, LibraryLoader},
+    UI::{Controls, WindowsAndMessaging as w32wm},
+  },
 };
+
 use crate::{
   timeout::Timeout,
   util::{self, Color},
 };
-use once_cell::sync::Lazy;
-use windows::*;
 
 /// Close button callback id
 const CLOSE_BTN_ID: isize = 554;
@@ -131,10 +133,10 @@ impl Notification {
 
       // cache primary monitor info
       if let Ok(mut pm) = PRIMARY_MONITOR.lock() {
-        if pm.__AnonymousBase_winuser_L13558_C43.rcWork.bottom == 0 {
+        if pm.__AnonymousBase_winuser_L13571_C43.rcWork.bottom == 0 {
           *pm = util::get_monitor_info(util::primary_monitor());
         }
-        let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
+        let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13571_C43.rcWork;
 
         let data = WindowData {
           window: w32f::HWND::default(),
@@ -162,7 +164,7 @@ impl Notification {
         );
 
         if hwnd.is_invalid() {
-          return Err(windows::Error::from_win32());
+          return Err(Error::from_win32());
         }
 
         // re-order active notifications and make room for new one
@@ -425,7 +427,7 @@ unsafe fn close_notification(hwnd: w32f::HWND) {
 
     // re-order notifications
     if let Ok(pm) = PRIMARY_MONITOR.lock() {
-      let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13558_C43.rcWork;
+      let w32f::RECT { right, bottom, .. } = pm.__AnonymousBase_winuser_L13571_C43.rcWork;
       for (i, h) in active_noti.iter().rev().enumerate() {
         w32wm::SetWindowPos(
           h,

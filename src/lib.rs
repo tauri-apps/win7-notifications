@@ -39,8 +39,6 @@
 //! ```
 //!
 
-windows::include_bindings!();
-
 mod notification;
 mod timeout;
 mod util;
