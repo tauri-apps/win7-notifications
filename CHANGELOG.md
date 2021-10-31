@@ -1,5 +1,10 @@
 # Changelog
 
+## \[0.2.3]
+
+- Migrate to rust edition 2021.
+  - [5d77b46](https://github.com/tauri-apps/win7-notifications/commit/5d77b46fe7f45b752015537c839a0feae76717f1) docs: update documentation on 2021-10-31
+
 ## \[0.2.2]
 
 - Check if DWM is enabled or not before adding shadows.
