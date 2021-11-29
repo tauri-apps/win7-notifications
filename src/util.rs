@@ -2,16 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use windows::{
-  runtime::*,
-  Win32::{
-    Foundation as w32f,
-    Graphics::Gdi,
-    System::Com,
-    UI::{Controls, Shell, WindowsAndMessaging as w32wm},
-  },
+use windows::core::*;
+use windows::Win32::{
+  Foundation as w32f,
+  Graphics::Gdi,
+  System::Com,
+  UI::{Shell, WindowsAndMessaging as w32wm},
 };
-
 pub fn current_exe_name() -> String {
   std::env::current_exe()
     .unwrap()
@@ -115,7 +112,7 @@ pub fn get_hicon_from_buffer(buffer: &[u8], width: i32, height: i32) -> Option<w
       true,
       width,
       height,
-      Controls::LR_DEFAULTCOLOR,
+      w32wm::LR_DEFAULTCOLOR,
     ) as isize
     {
       0 => None,
@@ -127,7 +124,7 @@ pub fn get_hicon_from_buffer(buffer: &[u8], width: i32, height: i32) -> Option<w
           0x00030000,
           0,
           0,
-          Controls::LR_DEFAULTCOLOR,
+          w32wm::LR_DEFAULTCOLOR,
         ) {
           hicon if hicon.is_invalid() => None,
           hicon => Some(hicon),
