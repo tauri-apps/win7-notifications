@@ -68,8 +68,7 @@ pub unsafe fn primary_monitor() -> Gdi::HMONITOR {
 
 pub unsafe fn get_monitor_info(hmonitor: Gdi::HMONITOR) -> Gdi::MONITORINFOEXW {
   let mut monitor_info = Gdi::MONITORINFOEXW::default();
-  monitor_info.__AnonymousBase_winuser_L13571_C43.cbSize =
-    std::mem::size_of::<Gdi::MONITORINFOEXW>() as u32;
+  monitor_info.monitorInfo.cbSize = std::mem::size_of::<Gdi::MONITORINFOEXW>() as u32;
   Gdi::GetMonitorInfoW(
     hmonitor,
     &mut monitor_info as *mut Gdi::MONITORINFOEXW as *mut Gdi::MONITORINFO,
@@ -126,7 +125,7 @@ pub fn get_hicon_from_buffer(buffer: &[u8], width: i32, height: i32) -> Option<w
           0,
           w32wm::LR_DEFAULTCOLOR,
         ) {
-          hicon if hicon.is_invalid() => None,
+          hicon if hicon == 0 => None,
           hicon => Some(hicon),
         }
       }
