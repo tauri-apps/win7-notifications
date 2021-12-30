@@ -10,16 +10,12 @@ on:
 
 jobs:
   clippy:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       fail-fast: false
 
     steps:
       - uses: actions/checkout@v2
-      - name: install webkit2gtk
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y webkit2gtk-4.0
       - name: Install clippy with stable toolchain
         uses: actions-rs/toolchain@v1
         with:
