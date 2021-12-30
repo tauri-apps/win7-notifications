@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use windows::core::*;
-use windows::Win32::{
-  Foundation as w32f,
-  Graphics::Gdi,
-  System::Com,
-  UI::{Shell, WindowsAndMessaging as w32wm},
+use windows::{
+  core::*,
+  Win32::{
+    Foundation as w32f,
+    Graphics::Gdi,
+    System::Com,
+    UI::{Shell, WindowsAndMessaging as w32wm},
+  },
 };
 pub fn current_exe_name() -> String {
   std::env::current_exe()

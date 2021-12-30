@@ -8,14 +8,15 @@ use std::{
   thread::{sleep, spawn},
   time::Duration,
 };
-use windows::Win32::{
-  Foundation as w32f,
-  Graphics::Dwm,
-  Graphics::Gdi,
-  System::{Diagnostics::Debug, LibraryLoader},
-  UI::WindowsAndMessaging as w32wm,
+use windows::{
+  core::*,
+  Win32::{
+    Foundation as w32f,
+    Graphics::{Dwm, Gdi},
+    System::{Diagnostics::Debug, LibraryLoader},
+    UI::{Controls, WindowsAndMessaging as w32wm},
+  },
 };
-use windows::{core::*, Win32::UI::Controls};
 
 use crate::{
   timeout::Timeout,
