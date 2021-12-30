@@ -16,6 +16,7 @@
 //!
 //! ```no_run
 //! # use win7_notifications::*;
+//! # let icon = &[];
 //! Notification::new()
 //!     .appname("App name")
 //!     .summary("Critical Error")
@@ -29,6 +30,7 @@
 //!
 //! ```no_run
 //! # use win7_notifications::*;
+//! # let icon = &[];
 //! Notification::new()
 //!     .appname("App name")
 //!     .summary("Critical Error")
