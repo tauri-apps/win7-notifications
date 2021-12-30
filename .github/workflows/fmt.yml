@@ -1,30 +1,29 @@
-name: fmt check
+name: Format
 
 on:
+  push:
+    branches:
+      - dev
   pull_request:
-    paths:
-      - "src/**"
-      - "Cargo.toml"
+    branches:
+      - dev
 
 jobs:
-  clippy_fmt_check:
-    runs-on: macos-latest
+  format:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install rustfmt with nightly toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
-          components: rustfmt, clippy
-      - name: clippy check
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --target x86_64-pc-windows-msvc -- -D warnings
-      - name: fmt
-        uses: actions-rs/cargo@v1
+          components: rustfmt
+      - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --check
+          args: --manifest-path=Cargo.toml --all -- --check
