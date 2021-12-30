@@ -184,8 +184,10 @@ impl Notification {
 
         // shadows
         if Dwm::DwmIsCompositionEnabled()?.as_bool() {
-          let mut margins = Controls::MARGINS::default();
-          margins.cxLeftWidth = 1;
+          let margins = Controls::MARGINS {
+            cxLeftWidth: 1,
+            ..Default::default()
+          };
           Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
         }
 
