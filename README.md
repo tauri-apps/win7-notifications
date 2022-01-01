@@ -11,10 +11,10 @@ This crate requires a win32 event loop to be running on the thread, otherwise th
 
 ### TODO:
 - [X] Move old notifications above new ones.
-- [ ] Animations
 - [X] Sounds
 - [X] Shadows
 - [ ] Change close button color when mouse hovers.
 - [ ] Callbacks for when close button or body of notification is clicked.
 - [ ] Account for taskbar size and position
+- [ ] Animations
 
