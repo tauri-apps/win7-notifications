@@ -59,7 +59,7 @@ pub fn set_window_long_ptr(
 }
 
 /// Implementation of the `LOWORD` macro.
-pub fn get_loword(dword: u32) -> u16 {
+pub fn loword(dword: u32) -> u16 {
   (dword & 0xFFFF) as u16
 }
 

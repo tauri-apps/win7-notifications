@@ -25,6 +25,7 @@ use crate::{
 
 /// Close button callback id
 const CLOSE_BTN_ID: isize = 554;
+
 /// notification width
 const N_WIDTH: i32 = 360;
 /// notification height
@@ -39,9 +40,8 @@ const WINDOW_COLOR: Color = Color(50, 57, 69);
 const TITILE_COLOR: Color = Color(255, 255, 255);
 /// used for notification body
 const SUBTITLE_COLOR: Color = Color(175, 175, 175);
-/// used to track existing notifications
+
 static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<w32f::HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
-/// cached primary monitor info
 static PRIMARY_MONITOR: Lazy<Mutex<Gdi::MONITORINFOEXW>> =
   Lazy::new(|| Mutex::new(Gdi::MONITORINFOEXW::default()));
 
@@ -115,7 +115,7 @@ impl Notification {
 
   /// Shows the Notification.
   ///
-  /// Requires an win32 event_loop to be running on the thread, otherwise the notification will close immediately.
+  /// Requires a win32 event_loop to be running on the thread, otherwise the notification will close immediately.
   pub fn show(&self) -> Result<()> {
     unsafe {
       let hinstance = LibraryLoader::GetModuleHandleW(w32f::PWSTR::default());
@@ -132,6 +132,8 @@ impl Notification {
 
       // cache primary monitor info
       if let Ok(mut pm) = PRIMARY_MONITOR.lock() {
+        // if the bottom coordinate of the monitor info is "0",
+        // it means we still didn't initialize the cached info
         if pm.monitorInfo.rcWork.bottom == 0 {
           *pm = util::get_monitor_info(util::primary_monitor());
         }
@@ -167,8 +169,8 @@ impl Notification {
         }
 
         // re-order active notifications and make room for new one
-        if let Ok(mut active_noti) = ACTIVE_NOTIFICATIONS.lock() {
-          for (i, h) in active_noti.iter().rev().enumerate() {
+        if let Ok(mut active_notifications) = ACTIVE_NOTIFICATIONS.lock() {
+          for (i, h) in active_notifications.iter().rev().enumerate() {
             w32wm::SetWindowPos(
               h,
               w32f::HWND::default(),
@@ -179,7 +181,7 @@ impl Notification {
               w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
             );
           }
-          active_noti.push(hwnd);
+          active_notifications.push(hwnd);
         }
 
         // shadows
@@ -206,6 +208,33 @@ impl Notification {
     }
 
     Ok(())
+  }
+}
+
+unsafe fn close_notification(hwnd: w32f::HWND) {
+  w32wm::ShowWindow(hwnd, w32wm::SW_HIDE);
+  w32wm::CloseWindow(hwnd);
+
+  if let Ok(mut active_noti) = ACTIVE_NOTIFICATIONS.lock() {
+    if let Some(index) = active_noti.iter().position(|e| *e == hwnd) {
+      active_noti.remove(index);
+    }
+
+    // re-order notifications
+    if let Ok(pm) = PRIMARY_MONITOR.lock() {
+      let w32f::RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
+      for (i, h) in active_noti.iter().rev().enumerate() {
+        w32wm::SetWindowPos(
+          h,
+          w32f::HWND::default(),
+          right - N_WIDTH - 15,
+          bottom - (N_HEIGHT * (i + 1) as i32) - 15,
+          0,
+          0,
+          w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
+        );
+      }
+    }
   }
 }
 
@@ -243,7 +272,6 @@ pub unsafe extern "system" fn window_proc(
     w32wm::WM_CREATE => {
       let userdata = userdata as *mut WindowData;
 
-      // fill userdata with missing info
       (*userdata).window = hwnd;
 
       // create the notification close button
@@ -379,14 +407,6 @@ pub unsafe extern "system" fn window_proc(
       true.into()
     }
 
-    w32wm::WM_COMMAND => {
-      if util::get_loword(wparam as _) == CLOSE_BTN_ID as u16 {
-        let userdata = userdata as *mut WindowData;
-        close_notification((*userdata).window)
-      }
-      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
-    }
-
     w32wm::WM_PAINT => {
       let userdata = userdata as *mut WindowData;
 
@@ -410,34 +430,22 @@ pub unsafe extern "system" fn window_proc(
 
       w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
     }
-    _ => w32wm::DefWindowProcW(hwnd, msg, wparam, lparam),
-  }
-}
 
-unsafe fn close_notification(hwnd: w32f::HWND) {
-  w32wm::ShowWindow(hwnd, w32wm::SW_HIDE);
-  w32wm::CloseWindow(hwnd);
-
-  // remove notification from our cache
-  if let Ok(mut active_noti) = ACTIVE_NOTIFICATIONS.lock() {
-    if let Some(index) = active_noti.iter().position(|e| *e == hwnd) {
-      active_noti.remove(index);
-    }
-
-    // re-order notifications
-    if let Ok(pm) = PRIMARY_MONITOR.lock() {
-      let w32f::RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
-      for (i, h) in active_noti.iter().rev().enumerate() {
-        w32wm::SetWindowPos(
-          h,
-          w32f::HWND::default(),
-          right - N_WIDTH - 15,
-          bottom - (N_HEIGHT * (i + 1) as i32) - 15,
-          0,
-          0,
-          w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
-        );
+    w32wm::WM_COMMAND => {
+      if util::loword(wparam as _) == CLOSE_BTN_ID as u16 {
+        let userdata = userdata as *mut WindowData;
+        close_notification((*userdata).window)
       }
+
+      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
     }
+
+    w32wm::WM_DESTROY => {
+      let userdata = userdata as *mut WindowData;
+      Box::from_raw(userdata);
+
+      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
+    }
+    _ => w32wm::DefWindowProcW(hwnd, msg, wparam, lparam),
   }
 }
