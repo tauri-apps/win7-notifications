@@ -62,15 +62,6 @@ pub fn SetWindowLongPtrW(
   unsafe { w32wm::SetWindowLongPtrW(window, index, value) }
 }
 
-/// Implementation of the `MAKELPARAM` macro.
-/// Inverse of [GET_X_LPARAM] and [GET_Y_LPARAM] to put the (`x`, `y`) signed
-/// coordinates/values back into an [LPARAM].
-#[allow(non_snake_case)]
-#[inline]
-pub fn MAKELPARAM(x: i16, y: i16) -> w32f::LPARAM {
-  ((x as u16 as u32) | ((y as u16 as u32) << 16)) as usize as w32f::LPARAM
-}
-
 /// Implementation of the `GET_X_LPARAM` macro.
 #[allow(non_snake_case)]
 #[inline]
