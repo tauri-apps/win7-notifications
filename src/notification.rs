@@ -342,12 +342,20 @@ pub unsafe extern "system" fn window_proc(
       let userdata = userdata as *mut WindowData;
 
       let (x, y) = (util::GET_X_LPARAM(lparam), util::GET_Y_LPARAM(lparam));
-      let hit_test = close_button_hit_test(x, y);
-      if hit_test != (*userdata).mouse_hovering_close_btn {
+      let hit = close_button_hit_test(x, y);
+      w32wm::SetCursor(w32wm::LoadCursorW(
+        w32f::HINSTANCE::default(),
+        if hit {
+          w32wm::IDC_HAND
+        } else {
+          w32wm::IDC_ARROW
+        },
+      ));
+      if hit != (*userdata).mouse_hovering_close_btn {
         // only trigger redraw if the previous state is different than the new state
         Gdi::InvalidateRect(hwnd, std::ptr::null(), w32f::BOOL(0));
       }
-      (*userdata).mouse_hovering_close_btn = hit_test;
+      (*userdata).mouse_hovering_close_btn = hit;
 
       w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
     }
@@ -372,7 +380,7 @@ pub unsafe extern "system" fn window_proc(
 }
 
 fn close_button_hit_test(x: i16, y: i16) -> bool {
-  (x > (NW - NM - NM / 3) as i16)
+  (x > (NW - NM - NM) as i16)
     && (x < (NW - NM / 2) as i16)
     && (y > NM as i16)
     && (y < (NM * 2) as i16)
