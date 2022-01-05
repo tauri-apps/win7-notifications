@@ -31,36 +31,58 @@ impl Color {
 }
 
 #[cfg(target_pointer_width = "32")]
-pub fn get_window_long_ptr(window: w32f::HWND, index: WINDOW_LONG_PTR_INDEX) -> isize {
-  unsafe { w32wm::GetWindowLongA(window, index) as _ }
+#[allow(non_snake_case)]
+pub fn GetWindowLongPtrW(window: w32f::HWND, index: WINDOW_LONG_PTR_INDEX) -> isize {
+  unsafe { w32wm::GetWindowLongW(window, index) as _ }
 }
 
 #[cfg(target_pointer_width = "64")]
-pub fn get_window_long_ptr(window: w32f::HWND, index: w32wm::WINDOW_LONG_PTR_INDEX) -> isize {
-  unsafe { w32wm::GetWindowLongPtrA(window, index) }
+#[allow(non_snake_case)]
+pub fn GetWindowLongPtrW(window: w32f::HWND, index: w32wm::WINDOW_LONG_PTR_INDEX) -> isize {
+  unsafe { w32wm::GetWindowLongPtrW(window, index) }
 }
 
 #[cfg(target_pointer_width = "32")]
-pub fn set_window_long_ptr(
+#[allow(non_snake_case)]
+pub fn SetWindowLongPtrW(
   window: w32f::HWND,
   index: w32wm::WINDOW_LONG_PTR_INDEX,
   value: isize,
 ) -> isize {
-  unsafe { w32wm::SetWindowLongA(window, index, value as _) as _ }
+  unsafe { w32wm::SetWindowLongW(window, index, value as _) as _ }
 }
 
 #[cfg(target_pointer_width = "64")]
-pub fn set_window_long_ptr(
+#[allow(non_snake_case)]
+pub fn SetWindowLongPtrW(
   window: w32f::HWND,
   index: w32wm::WINDOW_LONG_PTR_INDEX,
   value: isize,
 ) -> isize {
-  unsafe { w32wm::SetWindowLongPtrA(window, index, value) }
+  unsafe { w32wm::SetWindowLongPtrW(window, index, value) }
 }
 
-/// Implementation of the `LOWORD` macro.
-pub fn loword(dword: u32) -> u16 {
-  (dword & 0xFFFF) as u16
+/// Implementation of the `MAKELPARAM` macro.
+/// Inverse of [GET_X_LPARAM] and [GET_Y_LPARAM] to put the (`x`, `y`) signed
+/// coordinates/values back into an [LPARAM].
+#[allow(non_snake_case)]
+#[inline]
+pub fn MAKELPARAM(x: i16, y: i16) -> w32f::LPARAM {
+  ((x as u16 as u32) | ((y as u16 as u32) << 16)) as usize as w32f::LPARAM
+}
+
+/// Implementation of the `GET_X_LPARAM` macro.
+#[allow(non_snake_case)]
+#[inline]
+pub fn GET_X_LPARAM(lparam: w32f::LPARAM) -> i16 {
+  ((lparam as usize) & 0xFFFF) as u16 as i16
+}
+
+/// Implementation of the `GET_Y_LPARAM` macro.
+#[allow(non_snake_case)]
+#[inline]
+pub fn GET_Y_LPARAM(lparam: w32f::LPARAM) -> i16 {
+  (((lparam as usize) & 0xFFFF_0000) >> 16) as u16 as i16
 }
 
 pub unsafe fn primary_monitor() -> Gdi::HMONITOR {
