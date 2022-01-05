@@ -186,24 +186,6 @@ impl Notification {
         w32wm::ShowWindow(hwnd, w32wm::SW_SHOW);
         Debug::MessageBeep(w32wm::MB_OK);
 
-        let mut ncm = w32wm::NONCLIENTMETRICSW {
-          cbSize: std::mem::size_of::<w32wm::NONCLIENTMETRICSW>() as _,
-          ..Default::default()
-        };
-        w32wm::SystemParametersInfoW(
-          w32wm::SPI_GETNONCLIENTMETRICS,
-          std::mem::size_of::<w32wm::NONCLIENTMETRICSW>() as _,
-          &mut ncm as *mut _ as *mut _,
-          0,
-        );
-        let hfont = Gdi::CreateFontIndirectW(&ncm.lfMessageFont);
-        w32wm::SendMessageW(
-          hwnd,
-          w32wm::WM_SETFONT,
-          hfont as _,
-          util::MAKELPARAM(true.into(), 0),
-        );
-
         let timeout = self.timeout;
         spawn(move || {
           sleep(Duration::from_millis(timeout.into()));
