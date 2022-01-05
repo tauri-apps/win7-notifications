@@ -1,5 +1,14 @@
 # Changelog
 
+## \[0.2.4]
+
+- Properly clean notifications data from memory.
+  - [bfc2137](https://github.com/tauri-apps/win7-notifications/commit/bfc2137fcdffae4ad4d232eb1df4c14f79d37c18) fix: clean notification data when it is closed on 2022-01-01
+- Change close button color when mouse is hovering.
+  - [199ae45](https://github.com/tauri-apps/win7-notifications/commit/199ae45077ecc655451318970375579832ed5b14) feat: change close btn color when hovering on 2022-01-05
+- Fix cursor style when the mouse is over the notification.
+  - [4af1322](https://github.com/tauri-apps/win7-notifications/commit/4af1322b17e4eef6c6868673d02e56a6f42c3e1a) fix: fix cursor style is stuck on loading on 2022-01-05
+
 ## \[0.2.3]
 
 - Migrate to rust edition 2021.
