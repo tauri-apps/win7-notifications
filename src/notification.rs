@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 use std::{
   sync::Mutex,
   thread::{sleep, spawn},
@@ -39,7 +39,8 @@ const TC: Color = Color(255, 255, 255);
 const SC: Color = Color(200, 200, 200);
 
 static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<w32f::HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
-static PRIMARY_MONITOR: OnceCell<Mutex<Gdi::MONITORINFOEXW>> = OnceCell::new();
+static PRIMARY_MONITOR: Lazy<Mutex<Gdi::MONITORINFOEXW>> =
+  Lazy::new(|| unsafe { Mutex::new(util::get_monitor_info(util::primary_monitor())) });
 
 /// Describes The notification
 #[non_exhaustive]
@@ -126,10 +127,7 @@ impl Notification {
       };
       w32wm::RegisterClassW(&wnd_class);
 
-      if let Ok(pm) = PRIMARY_MONITOR
-        .get_or_init(|| Mutex::new(util::get_monitor_info(util::primary_monitor())))
-        .lock()
-      {
+      if let Ok(pm) = PRIMARY_MONITOR.lock() {
         let w32f::RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
 
         let data = WindowData {
@@ -210,20 +208,18 @@ unsafe fn close_notification(hwnd: w32f::HWND) {
     }
 
     // re-order notifications
-    if let Some(pm) = PRIMARY_MONITOR.get() {
-      if let Ok(pm) = pm.lock() {
-        let w32f::RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
-        for (i, h) in active_noti.iter().rev().enumerate() {
-          w32wm::SetWindowPos(
-            h,
-            w32f::HWND::default(),
-            right - NW - 15,
-            bottom - (NH * (i + 1) as i32) - 15,
-            0,
-            0,
-            w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
-          );
-        }
+    if let Ok(pm) = PRIMARY_MONITOR.lock() {
+      let w32f::RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
+      for (i, h) in active_noti.iter().rev().enumerate() {
+        w32wm::SetWindowPos(
+          h,
+          w32f::HWND::default(),
+          right - NW - 15,
+          bottom - (NH * (i + 1) as i32) - 15,
+          0,
+          0,
+          w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
+        );
       }
     }
   }
