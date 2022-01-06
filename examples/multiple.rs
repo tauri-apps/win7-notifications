@@ -9,7 +9,7 @@ fn main() {
 
   event_loop.run(move |event, _, _| match event {
     Event::NewEvents(e) if e == StartCause::Init => {
-      for i in 1..4 {
+      for i in 1..5 {
         Notification::new()
           .appname("App name")
           .summary("Critical Error")
