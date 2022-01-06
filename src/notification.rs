@@ -11,10 +11,25 @@ use std::{
 use windows::{
   core::*,
   Win32::{
-    Foundation as w32f,
-    Graphics::{Dwm, Gdi},
-    System::{Diagnostics::Debug, LibraryLoader},
-    UI::{Controls, WindowsAndMessaging as w32wm},
+    Foundation::{BOOL, HINSTANCE, HWND, LPARAM, LRESULT, PWSTR, RECT, WPARAM},
+    Graphics::{
+      Dwm::{DwmExtendFrameIntoClientArea, DwmIsCompositionEnabled},
+      Gdi::{
+        BeginPaint, CreateSolidBrush, DrawTextW, EndPaint, InvalidateRect, SetBkColor,
+        SetTextColor, TextOutW, DT_EXTERNALLEADING, DT_LEFT, DT_WORDBREAK, HBRUSH, MONITORINFOEXW,
+        PAINTSTRUCT,
+      },
+    },
+    System::{Diagnostics::Debug::MessageBeep, LibraryLoader::GetModuleHandleW},
+    UI::{
+      Controls::MARGINS,
+      WindowsAndMessaging::{
+        self as w32wm, CloseWindow, CreateWindowExW, DefWindowProcW, DrawIconEx, LoadCursorW,
+        RegisterClassW, SetCursor, SetWindowPos, ShowWindow, CREATESTRUCTW, DI_NORMAL,
+        GWL_USERDATA, HMENU, IDC_ARROW, IDC_HAND, MB_OK, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+        SW_HIDE, SW_SHOW, WNDCLASSW, WS_CAPTION, WS_EX_TOPMOST, WS_SYSMENU, WS_VISIBLE,
+      },
+    },
   },
 };
 
@@ -38,8 +53,8 @@ const TC: Color = Color(255, 255, 255);
 /// used for notification body
 const SC: Color = Color(200, 200, 200);
 
-static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<w32f::HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
-static PRIMARY_MONITOR: Lazy<Mutex<Gdi::MONITORINFOEXW>> =
+static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static PRIMARY_MONITOR: Lazy<Mutex<MONITORINFOEXW>> =
   Lazy::new(|| unsafe { Mutex::new(util::get_monitor_info(util::primary_monitor())) });
 
 /// Describes The notification
@@ -115,38 +130,38 @@ impl Notification {
   /// Requires a win32 event_loop to be running on the thread, otherwise the notification will close immediately.
   pub fn show(&self) -> Result<()> {
     unsafe {
-      let hinstance = LibraryLoader::GetModuleHandleW(w32f::PWSTR::default());
+      let hinstance = GetModuleHandleW(PWSTR::default());
 
       let mut class_name = String::from("win7-notify-rust");
-      let wnd_class = w32wm::WNDCLASSW {
+      let wnd_class = WNDCLASSW {
         lpfnWndProc: Some(window_proc),
-        lpszClassName: w32f::PWSTR(class_name.as_mut_ptr() as _),
+        lpszClassName: PWSTR(class_name.as_mut_ptr() as _),
         hInstance: hinstance,
-        hbrBackground: Gdi::CreateSolidBrush(WC.to_int()),
+        hbrBackground: CreateSolidBrush(WC.to_int()),
         ..Default::default()
       };
-      w32wm::RegisterClassW(&wnd_class);
+      RegisterClassW(&wnd_class);
 
       if let Ok(pm) = PRIMARY_MONITOR.lock() {
-        let w32f::RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
+        let RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
 
         let data = WindowData {
-          window: w32f::HWND::default(),
+          window: HWND::default(),
           mouse_hovering_close_btn: false,
           notification: self.clone(),
         };
 
-        let hwnd = w32wm::CreateWindowExW(
-          w32wm::WS_EX_TOPMOST,
-          w32f::PWSTR(class_name.as_mut_ptr() as _),
+        let hwnd = CreateWindowExW(
+          WS_EX_TOPMOST,
+          PWSTR(class_name.as_mut_ptr() as _),
           "win7-notifications-window",
-          w32wm::WS_SYSMENU | w32wm::WS_CAPTION | w32wm::WS_VISIBLE,
+          WS_SYSMENU | WS_CAPTION | WS_VISIBLE,
           right - NW - 15,
           bottom - NH - 15,
           NW,
           NH,
-          w32f::HWND::default(),
-          w32wm::HMENU::default(),
+          HWND::default(),
+          HMENU::default(),
           hinstance,
           Box::into_raw(Box::new(data)) as _,
         );
@@ -157,32 +172,34 @@ impl Notification {
 
         // re-order active notifications and make room for new one
         if let Ok(mut active_notifications) = ACTIVE_NOTIFICATIONS.lock() {
-          for (i, h) in active_notifications.iter().rev().enumerate() {
-            w32wm::SetWindowPos(
-              h,
-              w32f::HWND::default(),
-              right - NW - 15,
-              bottom - (NH * (i + 2) as i32) - 15,
-              0,
-              0,
-              w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
-            );
-          }
           active_notifications.push(hwnd);
+          let mut i = active_notifications.len() as i32;
+          for hwnd in active_notifications.iter() {
+            SetWindowPos(
+              hwnd,
+              HWND::default(),
+              right - NW - 15,
+              bottom - 15 - (NH * i) - 10 * (i - 1),
+              0,
+              0,
+              SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER,
+            );
+            i -= 1;
+          }
         }
 
         // shadows
-        if Dwm::DwmIsCompositionEnabled()?.as_bool() {
-          let margins = Controls::MARGINS {
+        if DwmIsCompositionEnabled()?.as_bool() {
+          let margins = MARGINS {
             cxLeftWidth: 1,
             ..Default::default()
           };
-          Dwm::DwmExtendFrameIntoClientArea(hwnd, &margins)?;
+          DwmExtendFrameIntoClientArea(hwnd, &margins)?;
         }
 
         util::skip_taskbar(hwnd)?;
-        w32wm::ShowWindow(hwnd, w32wm::SW_SHOW);
-        Debug::MessageBeep(w32wm::MB_OK);
+        ShowWindow(hwnd, SW_SHOW);
+        MessageBeep(MB_OK);
 
         let timeout = self.timeout;
         spawn(move || {
@@ -198,9 +215,9 @@ impl Notification {
   }
 }
 
-unsafe fn close_notification(hwnd: w32f::HWND) {
-  w32wm::ShowWindow(hwnd, w32wm::SW_HIDE);
-  w32wm::CloseWindow(hwnd);
+unsafe fn close_notification(hwnd: HWND) {
+  ShowWindow(hwnd, SW_HIDE);
+  CloseWindow(hwnd);
 
   if let Ok(mut active_noti) = ACTIVE_NOTIFICATIONS.lock() {
     if let Some(index) = active_noti.iter().position(|e| *e == hwnd) {
@@ -209,16 +226,16 @@ unsafe fn close_notification(hwnd: w32f::HWND) {
 
     // re-order notifications
     if let Ok(pm) = PRIMARY_MONITOR.lock() {
-      let w32f::RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
+      let RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
       for (i, h) in active_noti.iter().rev().enumerate() {
-        w32wm::SetWindowPos(
+        SetWindowPos(
           h,
-          w32f::HWND::default(),
+          HWND::default(),
           right - NW - 15,
           bottom - (NH * (i + 1) as i32) - 15,
           0,
           0,
-          w32wm::SWP_NOOWNERZORDER | w32wm::SWP_NOSIZE | w32wm::SWP_NOZORDER,
+          SWP_NOSIZE | SWP_NOZORDER,
         );
       }
     }
@@ -226,27 +243,27 @@ unsafe fn close_notification(hwnd: w32f::HWND) {
 }
 
 struct WindowData {
-  window: w32f::HWND,
+  window: HWND,
   notification: Notification,
   mouse_hovering_close_btn: bool,
 }
 
 pub unsafe extern "system" fn window_proc(
-  hwnd: w32f::HWND,
+  hwnd: HWND,
   msg: u32,
-  wparam: w32f::WPARAM,
-  lparam: w32f::LPARAM,
-) -> w32f::LRESULT {
-  let mut userdata = util::GetWindowLongPtrW(hwnd, w32wm::GWL_USERDATA);
+  wparam: WPARAM,
+  lparam: LPARAM,
+) -> LRESULT {
+  let mut userdata = util::GetWindowLongPtrW(hwnd, GWL_USERDATA);
 
   match msg {
     w32wm::WM_NCCREATE => {
       if userdata == 0 {
-        let createstruct = &*(lparam as *const w32wm::CREATESTRUCTW);
+        let createstruct = &*(lparam as *const CREATESTRUCTW);
         userdata = createstruct.lpCreateParams as isize;
-        util::SetWindowLongPtrW(hwnd, w32wm::GWL_USERDATA, userdata);
+        util::SetWindowLongPtrW(hwnd, GWL_USERDATA, userdata);
       }
-      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
+      DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
     // make the window borderless
@@ -255,20 +272,20 @@ pub unsafe extern "system" fn window_proc(
     w32wm::WM_CREATE => {
       let userdata = userdata as *mut WindowData;
       (*userdata).window = hwnd;
-      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
+      DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
     w32wm::WM_PAINT => {
       let userdata = userdata as *mut WindowData;
-      let mut ps = Gdi::PAINTSTRUCT::default();
-      let hdc = Gdi::BeginPaint(hwnd, &mut ps);
+      let mut ps = PAINTSTRUCT::default();
+      let hdc = BeginPaint(hwnd, &mut ps);
 
-      Gdi::SetBkColor(hdc, WC.to_int());
-      Gdi::SetTextColor(hdc, TC.to_int());
+      SetBkColor(hdc, WC.to_int());
+      SetTextColor(hdc, TC.to_int());
 
       // draw notification icon
       if let Some(hicon) = util::get_hicon_from_buffer(&(*userdata).notification.icon, 16, 16) {
-        w32wm::DrawIconEx(
+        DrawIconEx(
           hdc,
           NM,
           NM,
@@ -276,13 +293,13 @@ pub unsafe extern "system" fn window_proc(
           NIS,
           NIS,
           0,
-          Gdi::HBRUSH::default(),
-          w32wm::DI_NORMAL,
+          HBRUSH::default(),
+          DI_NORMAL,
         );
       }
 
       // draw notification close button
-      Gdi::SetTextColor(
+      SetTextColor(
         hdc,
         if (*userdata).mouse_hovering_close_btn {
           TC.to_int()
@@ -290,12 +307,12 @@ pub unsafe extern "system" fn window_proc(
           SC.to_int()
         },
       );
-      Gdi::TextOutW(hdc, NW - NM - NM / 2, NM, "X", 1);
+      TextOutW(hdc, NW - NM - NM / 2, NM, "X", 1);
 
       // draw notification app name
-      Gdi::SetTextColor(hdc, TC.to_int());
+      SetTextColor(hdc, TC.to_int());
       util::set_font(hdc, "Segeo UI", 15, 400);
-      Gdi::TextOutW(
+      TextOutW(
         hdc,
         NM + NIS + (NM / 2),
         NM,
@@ -305,7 +322,7 @@ pub unsafe extern "system" fn window_proc(
 
       // draw notification summary (title)
       util::set_font(hdc, "Segeo UI", 17, 700);
-      Gdi::TextOutW(
+      TextOutW(
         hdc,
         NM,
         NM + NIS + (NM / 2),
@@ -314,24 +331,24 @@ pub unsafe extern "system" fn window_proc(
       );
 
       // draw notification body
-      Gdi::SetTextColor(hdc, SC.to_int());
+      SetTextColor(hdc, SC.to_int());
       util::set_font(hdc, "Segeo UI", 17, 400);
-      let mut rc = w32f::RECT {
+      let mut rc = RECT {
         left: NM,
         top: NM + NIS + (NM / 2) + 17 + (NM / 2),
         right: NW - NM,
         bottom: NH - NM,
       };
-      Gdi::DrawTextW(
+      DrawTextW(
         hdc,
         (*userdata).notification.body.clone(),
         (*userdata).notification.body.len() as _,
         &mut rc,
-        Gdi::DT_LEFT | Gdi::DT_EXTERNALLEADING | Gdi::DT_WORDBREAK,
+        DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK,
       );
 
-      Gdi::EndPaint(hdc, &ps);
-      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
+      EndPaint(hdc, &ps);
+      DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
     w32wm::WM_MOUSEMOVE => {
@@ -339,21 +356,17 @@ pub unsafe extern "system" fn window_proc(
 
       let (x, y) = (util::GET_X_LPARAM(lparam), util::GET_Y_LPARAM(lparam));
       let hit = close_button_hit_test(x, y);
-      w32wm::SetCursor(w32wm::LoadCursorW(
-        w32f::HINSTANCE::default(),
-        if hit {
-          w32wm::IDC_HAND
-        } else {
-          w32wm::IDC_ARROW
-        },
+      SetCursor(LoadCursorW(
+        HINSTANCE::default(),
+        if hit { IDC_HAND } else { IDC_ARROW },
       ));
       if hit != (*userdata).mouse_hovering_close_btn {
         // only trigger redraw if the previous state is different than the new state
-        Gdi::InvalidateRect(hwnd, std::ptr::null(), w32f::BOOL(0));
+        InvalidateRect(hwnd, std::ptr::null(), BOOL(0));
       }
       (*userdata).mouse_hovering_close_btn = hit;
 
-      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
+      DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
     w32wm::WM_LBUTTONDOWN => {
@@ -362,16 +375,16 @@ pub unsafe extern "system" fn window_proc(
         close_notification(hwnd)
       }
 
-      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
+      DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
     w32wm::WM_DESTROY => {
       let userdata = userdata as *mut WindowData;
       Box::from_raw(userdata);
 
-      w32wm::DefWindowProcW(hwnd, msg, wparam, lparam)
+      DefWindowProcW(hwnd, msg, wparam, lparam)
     }
-    _ => w32wm::DefWindowProcW(hwnd, msg, wparam, lparam),
+    _ => DefWindowProcW(hwnd, msg, wparam, lparam),
   }
 }
 
