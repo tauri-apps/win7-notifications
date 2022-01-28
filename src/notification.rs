@@ -166,7 +166,7 @@ impl Notification {
           Box::into_raw(Box::new(data)) as _,
         );
 
-        if hwnd == 0 {
+        if hwnd.is_invalid() {
           return Err(Error::from_win32());
         }
 
@@ -259,7 +259,7 @@ pub unsafe extern "system" fn window_proc(
   match msg {
     w32wm::WM_NCCREATE => {
       if userdata == 0 {
-        let createstruct = &*(lparam as *const CREATESTRUCTW);
+        let createstruct = &*(lparam.0 as *const CREATESTRUCTW);
         userdata = createstruct.lpCreateParams as isize;
         util::SetWindowLongPtrW(hwnd, GWL_USERDATA, userdata);
       }
@@ -267,7 +267,7 @@ pub unsafe extern "system" fn window_proc(
     }
 
     // make the window borderless
-    w32wm::WM_NCCALCSIZE => 0,
+    w32wm::WM_NCCALCSIZE => LRESULT(0),
 
     w32wm::WM_CREATE => {
       let userdata = userdata as *mut WindowData;
@@ -347,7 +347,7 @@ pub unsafe extern "system" fn window_proc(
         DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK,
       );
 
-      EndPaint(hdc, &ps);
+      EndPaint(HWND(hdc.0), &ps);
       DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
