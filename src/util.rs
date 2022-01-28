@@ -66,14 +66,14 @@ pub fn SetWindowLongPtrW(
 #[allow(non_snake_case)]
 #[inline]
 pub fn GET_X_LPARAM(lparam: w32f::LPARAM) -> i16 {
-  ((lparam as usize) & 0xFFFF) as u16 as i16
+  ((lparam.0 as usize) & 0xFFFF) as u16 as i16
 }
 
 /// Implementation of the `GET_Y_LPARAM` macro.
 #[allow(non_snake_case)]
 #[inline]
 pub fn GET_Y_LPARAM(lparam: w32f::LPARAM) -> i16 {
-  (((lparam as usize) & 0xFFFF_0000) >> 16) as u16 as i16
+  (((lparam.0 as usize) & 0xFFFF_0000) >> 16) as u16 as i16
 }
 
 pub unsafe fn primary_monitor() -> Gdi::HMONITOR {
@@ -140,7 +140,7 @@ pub fn get_hicon_from_buffer(buffer: &[u8], width: i32, height: i32) -> Option<w
           0,
           w32wm::LR_DEFAULTCOLOR,
         ) {
-          hicon if hicon == 0 => None,
+          hicon if hicon.is_invalid() => None,
           hicon => Some(hicon),
         }
       }
