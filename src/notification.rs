@@ -20,13 +20,14 @@ use windows::{
         PAINTSTRUCT,
       },
     },
-    System::{Diagnostics::Debug::MessageBeep, LibraryLoader::GetModuleHandleW},
+    Media::Audio::{PlaySoundW, SND_ASYNC},
+    System::LibraryLoader::GetModuleHandleW,
     UI::{
       Controls::MARGINS,
       WindowsAndMessaging::{
         self as w32wm, CloseWindow, CreateWindowExW, DefWindowProcW, DrawIconEx, LoadCursorW,
         RegisterClassW, SetCursor, SetWindowPos, ShowWindow, CREATESTRUCTW, DI_NORMAL,
-        GWL_USERDATA, HMENU, IDC_ARROW, IDC_HAND, MB_OK, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+        GWL_USERDATA, HMENU, IDC_ARROW, IDC_HAND, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
         SW_HIDE, SW_SHOW, WNDCLASSW, WS_CAPTION, WS_EX_TOPMOST, WS_SYSMENU, WS_VISIBLE,
       },
     },
@@ -199,7 +200,8 @@ impl Notification {
 
         util::skip_taskbar(hwnd)?;
         ShowWindow(hwnd, SW_SHOW);
-        MessageBeep(MB_OK);
+        // note(amrbashir): Passing an invalid path to `PlaySoundW` will make windows play default sound.
+        PlaySoundW("NULL", HINSTANCE::default(), SND_ASYNC);
 
         let timeout = self.timeout;
         spawn(move || {
