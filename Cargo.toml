@@ -37,4 +37,4 @@ features = [
 ]
 
 [dev-dependencies]
-tao = "0.6.0"
+tao = "0.6.1"
