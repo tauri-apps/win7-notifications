@@ -7,7 +7,7 @@
 pub enum Timeout {
   /// Expires according to server default.
   ///
-  /// Whatever that might be...
+  /// 5000ms
   Default,
 
   /// Do not expire, user will have to close this manually.

@@ -34,10 +34,7 @@ use windows::{
   },
 };
 
-use crate::{
-  timeout::Timeout,
-  util::{self, Color},
-};
+use crate::{timeout::Timeout, util};
 
 /// notification width
 const NW: i32 = 360;
@@ -48,11 +45,11 @@ const NM: i32 = 16;
 /// notification icon size (width/height)
 const NIS: i32 = 16;
 /// notification window bg color
-const WC: Color = Color(50, 57, 69);
+const WC: u32 = util::RGB(50, 57, 69);
 /// used for notification summary (title)
-const TC: Color = Color(255, 255, 255);
+const TC: u32 = util::RGB(255, 255, 255);
 /// used for notification body
-const SC: Color = Color(200, 200, 200);
+const SC: u32 = util::RGB(200, 200, 200);
 
 static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PRIMARY_MONITOR: Lazy<Mutex<MONITORINFOEXW>> =
@@ -63,6 +60,8 @@ static PRIMARY_MONITOR: Lazy<Mutex<MONITORINFOEXW>> =
 #[derive(Debug, Clone)]
 pub struct Notification {
   pub icon: Vec<u8>,
+  pub icon_width: u32,
+  pub icon_height: u32,
   pub appname: String,
   pub summary: String,
   pub body: String,
@@ -76,6 +75,8 @@ impl Default for Notification {
       summary: String::new(),
       body: String::new(),
       icon: Vec::new(),
+      icon_height: 32,
+      icon_width: 32,
       timeout: Timeout::Default,
     }
   }
@@ -114,9 +115,22 @@ impl Notification {
     self
   }
 
-  /// Set the `icon` field must be `.ico` byte array.
-  pub fn icon(&mut self, icon: Vec<u8>) -> &mut Notification {
-    self.icon = icon;
+  /// Set the `icon` field from 32bpp RGBA data.
+  ///
+  /// The length of `rgba` must be divisible by 4, and `width * height` must equal
+  /// `rgba.len() / 4`. Otherwise, this will panic.
+  pub fn icon(&mut self, rgba: Vec<u8>, width: u32, height: u32) -> &mut Notification {
+    if rgba.len() % util::PIXEL_SIZE != 0 {
+      panic!();
+    }
+    let pixel_count = rgba.len() / util::PIXEL_SIZE;
+    if pixel_count != (width * height) as usize {
+      panic!()
+    } else {
+      self.icon = rgba;
+      self.icon_width = width;
+      self.icon_height = height;
+    }
     self
   }
 
@@ -138,7 +152,7 @@ impl Notification {
         lpfnWndProc: Some(window_proc),
         lpszClassName: PWSTR(class_name.as_mut_ptr() as _),
         hInstance: hinstance,
-        hbrBackground: CreateSolidBrush(WC.to_int()),
+        hbrBackground: CreateSolidBrush(WC),
         ..Default::default()
       };
       RegisterClassW(&wnd_class);
@@ -200,7 +214,8 @@ impl Notification {
 
         util::skip_taskbar(hwnd)?;
         ShowWindow(hwnd, SW_SHOW);
-        // note(amrbashir): Passing an invalid path to `PlaySoundW` will make windows play default sound.
+        // Passing an invalid path to `PlaySoundW` will make windows play default sound.
+        // https://docs.microsoft.com/en-us/previous-versions/dd743680(v=vs.85)#remarks
         PlaySoundW("NULL", HINSTANCE::default(), SND_ASYNC);
 
         let timeout = self.timeout;
@@ -282,37 +297,40 @@ pub unsafe extern "system" fn window_proc(
       let mut ps = PAINTSTRUCT::default();
       let hdc = BeginPaint(hwnd, &mut ps);
 
-      SetBkColor(hdc, WC.to_int());
-      SetTextColor(hdc, TC.to_int());
+      SetBkColor(hdc, WC);
+      SetTextColor(hdc, TC);
 
       // draw notification icon
-      if let Some(hicon) = util::get_hicon_from_buffer(&(*userdata).notification.icon, 16, 16) {
-        DrawIconEx(
-          hdc,
-          NM,
-          NM,
-          hicon,
-          NIS,
-          NIS,
-          0,
-          HBRUSH::default(),
-          DI_NORMAL,
-        );
-      }
+      let hicon = util::get_hicon_from_buffer(
+        (*userdata).notification.icon.clone(),
+        (*userdata).notification.icon_width,
+        (*userdata).notification.icon_height,
+      );
+      DrawIconEx(
+        hdc,
+        NM,
+        NM,
+        hicon,
+        NIS,
+        NIS,
+        0,
+        HBRUSH::default(),
+        DI_NORMAL,
+      );
 
       // draw notification close button
       SetTextColor(
         hdc,
         if (*userdata).mouse_hovering_close_btn {
-          TC.to_int()
+          TC
         } else {
-          SC.to_int()
+          SC
         },
       );
       TextOutW(hdc, NW - NM - NM / 2, NM, "X", 1);
 
       // draw notification app name
-      SetTextColor(hdc, TC.to_int());
+      SetTextColor(hdc, TC);
       util::set_font(hdc, "Segeo UI", 15, 400);
       TextOutW(
         hdc,
@@ -333,7 +351,7 @@ pub unsafe extern "system" fn window_proc(
       );
 
       // draw notification body
-      SetTextColor(hdc, SC.to_int());
+      SetTextColor(hdc, SC);
       util::set_font(hdc, "Segeo UI", 17, 400);
       let mut rc = RECT {
         left: NM,

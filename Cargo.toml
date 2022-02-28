@@ -38,3 +38,4 @@ features = [
 
 [dev-dependencies]
 tao = "0.6.2"
+image = "0.24"
