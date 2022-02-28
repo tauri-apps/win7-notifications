@@ -302,7 +302,7 @@ pub unsafe extern "system" fn window_proc(
           right: 0,
           top: 0,
         },
-        rgbReserved: [0 as u8; 32],
+        rgbReserved: [0; 32],
       };
       let hdc = BeginPaint(hwnd, &mut ps);
 
