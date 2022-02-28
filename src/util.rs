@@ -2,15 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-use windows::{
-  core::*,
-  Win32::{
-    Foundation as w32f,
-    Graphics::Gdi,
-    System::Com,
-    UI::{Shell, WindowsAndMessaging as w32wm},
-  },
+use std::{cell::Cell, ffi::OsStr, iter::once, os::windows::prelude::OsStrExt, ptr};
+
+use windows_sys::Win32::{
+  Foundation::*,
+  Graphics::Gdi::*,
+  System::Com::*,
+  UI::WindowsAndMessaging::{self as w32wm, *},
 };
+
+use crate::definitions::*;
+
 pub fn current_exe_name() -> String {
   std::env::current_exe()
     .unwrap()
@@ -19,6 +21,9 @@ pub fn current_exe_name() -> String {
     .to_str()
     .unwrap()
     .to_owned()
+}
+pub fn encode_wide(string: impl AsRef<OsStr>) -> Vec<u16> {
+  string.as_ref().encode_wide().chain(once(0)).collect()
 }
 
 /// Implementation of the `RGB` macro.
@@ -30,75 +35,126 @@ pub const fn RGB(r: u32, g: u32, b: u32) -> u32 {
 
 #[cfg(target_pointer_width = "32")]
 #[allow(non_snake_case)]
-pub fn GetWindowLongPtrW(window: w32f::HWND, index: WINDOW_LONG_PTR_INDEX) -> isize {
+pub fn GetWindowLongPtrW(window: HWND, index: WINDOW_LONG_PTR_INDEX) -> isize {
   unsafe { w32wm::GetWindowLongW(window, index) as _ }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[allow(non_snake_case)]
-pub fn GetWindowLongPtrW(window: w32f::HWND, index: w32wm::WINDOW_LONG_PTR_INDEX) -> isize {
+pub fn GetWindowLongPtrW(window: HWND, index: WINDOW_LONG_PTR_INDEX) -> isize {
   unsafe { w32wm::GetWindowLongPtrW(window, index) }
 }
 
 #[cfg(target_pointer_width = "32")]
 #[allow(non_snake_case)]
-pub fn SetWindowLongPtrW(
-  window: w32f::HWND,
-  index: w32wm::WINDOW_LONG_PTR_INDEX,
-  value: isize,
-) -> isize {
+pub fn SetWindowLongPtrW(window: HWND, index: WINDOW_LONG_PTR_INDEX, value: isize) -> isize {
   unsafe { w32wm::SetWindowLongW(window, index, value as _) as _ }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[allow(non_snake_case)]
-pub fn SetWindowLongPtrW(
-  window: w32f::HWND,
-  index: w32wm::WINDOW_LONG_PTR_INDEX,
-  value: isize,
-) -> isize {
+pub fn SetWindowLongPtrW(window: HWND, index: WINDOW_LONG_PTR_INDEX, value: isize) -> isize {
   unsafe { w32wm::SetWindowLongPtrW(window, index, value) }
 }
 
 /// Implementation of the `GET_X_LPARAM` macro.
 #[allow(non_snake_case)]
 #[inline]
-pub fn GET_X_LPARAM(lparam: w32f::LPARAM) -> i16 {
-  ((lparam.0 as usize) & 0xFFFF) as u16 as i16
+pub fn GET_X_LPARAM(lparam: LPARAM) -> i16 {
+  ((lparam as usize) & 0xFFFF) as u16 as i16
 }
 
 /// Implementation of the `GET_Y_LPARAM` macro.
 #[allow(non_snake_case)]
 #[inline]
-pub fn GET_Y_LPARAM(lparam: w32f::LPARAM) -> i16 {
-  (((lparam.0 as usize) & 0xFFFF_0000) >> 16) as u16 as i16
+pub fn GET_Y_LPARAM(lparam: LPARAM) -> i16 {
+  (((lparam as usize) & 0xFFFF_0000) >> 16) as u16 as i16
 }
 
-pub unsafe fn primary_monitor() -> Gdi::HMONITOR {
-  let pt = w32f::POINT { x: 0, y: 0 };
-  Gdi::MonitorFromPoint(&pt, Gdi::MONITOR_DEFAULTTOPRIMARY)
+pub unsafe fn primary_monitor() -> HMONITOR {
+  let pt = POINT { x: 0, y: 0 };
+  MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY)
 }
 
-pub unsafe fn get_monitor_info(hmonitor: Gdi::HMONITOR) -> Gdi::MONITORINFOEXW {
-  let mut monitor_info = Gdi::MONITORINFOEXW::default();
-  monitor_info.monitorInfo.cbSize = std::mem::size_of::<Gdi::MONITORINFOEXW>() as u32;
-  Gdi::GetMonitorInfoW(
+pub unsafe fn get_monitor_info(hmonitor: HMONITOR) -> MONITORINFOEXW {
+  let mut monitor_info = MONITORINFOEXW {
+    szDevice: [0 as u16; 32],
+    monitorInfo: MONITORINFO {
+      cbSize: std::mem::size_of::<MONITORINFO>() as _,
+      dwFlags: 0,
+      rcMonitor: RECT {
+        bottom: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+      },
+      rcWork: RECT {
+        bottom: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+      },
+    },
+  };
+  monitor_info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
+  GetMonitorInfoW(
     hmonitor,
-    &mut monitor_info as *mut Gdi::MONITORINFOEXW as *mut Gdi::MONITORINFO,
+    &mut monitor_info as *mut MONITORINFOEXW as *mut MONITORINFO,
   );
   monitor_info
 }
 
-pub unsafe fn skip_taskbar(hwnd: w32f::HWND) -> Result<()> {
-  let _ = Com::CoInitialize(std::ptr::null());
-  let taskbar_list: Shell::ITaskbarList =
-    Com::CoCreateInstance(&Shell::TaskbarList, None, Com::CLSCTX_SERVER)?;
-  taskbar_list.DeleteTab(hwnd)?;
-  Ok(())
+struct ComInitialized(*mut ());
+impl Drop for ComInitialized {
+  fn drop(&mut self) {
+    unsafe { CoUninitialize() };
+  }
 }
 
-pub unsafe fn set_font(hdc: Gdi::HDC, name: &str, size: i32, weight: i32) {
-  let hfont = Gdi::CreateFontW(
+thread_local! {
+  static COM_INITIALIZED: ComInitialized = {
+    unsafe {
+        CoInitializeEx(ptr::null(), COINIT_APARTMENTTHREADED);
+        ComInitialized(ptr::null_mut())
+    }
+  };
+
+  static TASKBAR_LIST: Cell<*mut ITaskbarList> = Cell::new(ptr::null_mut());
+}
+
+pub fn com_initialized() {
+  COM_INITIALIZED.with(|_| {});
+}
+pub unsafe fn skip_taskbar(hwnd: HWND) {
+  com_initialized();
+
+  TASKBAR_LIST.with(|taskbar_list_ptr| {
+    let mut taskbar_list = taskbar_list_ptr.get();
+
+    if taskbar_list.is_null() {
+      CoCreateInstance(
+        &CLSID_TaskbarList,
+        ptr::null_mut(),
+        CLSCTX_ALL,
+        &IID_ITaskbarList,
+        &mut taskbar_list as *mut _ as *mut _,
+      );
+
+      let hr_init = (*(*taskbar_list).lpVtbl).HrInit;
+      hr_init(taskbar_list.cast());
+
+      taskbar_list_ptr.set(taskbar_list)
+    }
+
+    taskbar_list = taskbar_list_ptr.get();
+    let delete_tab = (*(*taskbar_list).lpVtbl).DeleteTab;
+    delete_tab(taskbar_list, hwnd);
+  });
+}
+
+pub unsafe fn set_font(hdc: HDC, name: &str, size: i32, weight: i32) {
+  let name = format!("{}\0", name);
+  let hfont = CreateFontW(
     size,
     0,
     0,
@@ -107,14 +163,14 @@ pub unsafe fn set_font(hdc: Gdi::HDC, name: &str, size: i32, weight: i32) {
     false.into(),
     false.into(),
     false.into(),
-    Gdi::DEFAULT_CHARSET,
-    Gdi::OUT_DEFAULT_PRECIS,
-    Gdi::CLIP_DEFAULT_PRECIS,
-    Gdi::CLEARTYPE_QUALITY,
-    Gdi::FF_DONTCARE,
-    name,
+    DEFAULT_CHARSET,
+    OUT_DEFAULT_PRECIS,
+    CLIP_DEFAULT_PRECIS,
+    CLEARTYPE_QUALITY,
+    FF_DONTCARE,
+    name.as_ptr() as _,
   );
-  Gdi::SelectObject(hdc, hfont);
+  SelectObject(hdc, hfont);
 }
 
 #[allow(dead_code)]
@@ -146,7 +202,7 @@ pub fn get_hicon_from_buffer(rgba: Vec<u8>, width: u32, height: u32) -> w32wm::H
   assert_eq!(and_mask.len(), pixel_count);
   unsafe {
     w32wm::CreateIcon(
-      w32f::HINSTANCE::default(),
+      HINSTANCE::default(),
       width as i32,
       height as i32,
       1,
