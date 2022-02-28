@@ -117,6 +117,7 @@ pub unsafe fn set_font(hdc: Gdi::HDC, name: &str, size: i32, weight: i32) {
   Gdi::SelectObject(hdc, hfont);
 }
 
+#[allow(dead_code)]
 pub(crate) struct Pixel {
   pub(crate) r: u8,
   pub(crate) g: u8,
