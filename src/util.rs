@@ -78,7 +78,7 @@ pub unsafe fn primary_monitor() -> HMONITOR {
 
 pub unsafe fn get_monitor_info(hmonitor: HMONITOR) -> MONITORINFOEXW {
   let mut monitor_info = MONITORINFOEXW {
-    szDevice: [0 as u16; 32],
+    szDevice: [0_u16; 32],
     monitorInfo: MONITORINFO {
       cbSize: std::mem::size_of::<MONITORINFO>() as _,
       dwFlags: 0,
@@ -182,7 +182,7 @@ pub(crate) struct Pixel {
 }
 
 impl Pixel {
-  fn to_bgra(&mut self) {
+  fn to_bgra_mut(&mut self) {
     std::mem::swap(&mut self.r, &mut self.b);
   }
 }
@@ -197,7 +197,7 @@ pub fn get_hicon_from_buffer(rgba: Vec<u8>, width: u32, height: u32) -> w32wm::H
     unsafe { std::slice::from_raw_parts_mut(rgba.as_mut_ptr() as *mut Pixel, pixel_count) };
   for pixel in pixels {
     and_mask.push(pixel.a.wrapping_sub(std::u8::MAX)); // invert alpha channel
-    pixel.to_bgra();
+    pixel.to_bgra_mut();
   }
   assert_eq!(and_mask.len(), pixel_count);
   unsafe {
