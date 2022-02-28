@@ -21,13 +21,11 @@ pub fn current_exe_name() -> String {
     .to_owned()
 }
 
-pub struct Color(pub u32, pub u32, pub u32);
-
-impl Color {
-  /// conver Color to a integer based color
-  pub fn to_int(&self) -> u32 {
-    self.0 | (self.1 << 8) | (self.2 << 16)
-  }
+/// Implementation of the `RGB` macro.
+#[allow(non_snake_case)]
+#[inline]
+pub const fn RGB(r: u32, g: u32, b: u32) -> u32 {
+  r | g << 8 | b << 16
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -119,31 +117,41 @@ pub unsafe fn set_font(hdc: Gdi::HDC, name: &str, size: i32, weight: i32) {
   Gdi::SelectObject(hdc, hfont);
 }
 
-pub fn get_hicon_from_buffer(buffer: &[u8], width: i32, height: i32) -> Option<w32wm::HICON> {
+pub(crate) struct Pixel {
+  pub(crate) r: u8,
+  pub(crate) g: u8,
+  pub(crate) b: u8,
+  pub(crate) a: u8,
+}
+
+impl Pixel {
+  fn to_bgra(&mut self) {
+    std::mem::swap(&mut self.r, &mut self.b);
+  }
+}
+
+pub(crate) const PIXEL_SIZE: usize = std::mem::size_of::<Pixel>();
+
+pub fn get_hicon_from_buffer(rgba: Vec<u8>, width: u32, height: u32) -> w32wm::HICON {
+  let mut rgba = rgba;
+  let pixel_count = rgba.len() / PIXEL_SIZE;
+  let mut and_mask = Vec::with_capacity(pixel_count);
+  let pixels =
+    unsafe { std::slice::from_raw_parts_mut(rgba.as_mut_ptr() as *mut Pixel, pixel_count) };
+  for pixel in pixels {
+    and_mask.push(pixel.a.wrapping_sub(std::u8::MAX)); // invert alpha channel
+    pixel.to_bgra();
+  }
+  assert_eq!(and_mask.len(), pixel_count);
   unsafe {
-    match w32wm::LookupIconIdFromDirectoryEx(
-      buffer.as_ptr() as _,
-      true,
-      width,
-      height,
-      w32wm::LR_DEFAULTCOLOR,
-    ) as isize
-    {
-      0 => None,
-      offset => {
-        match w32wm::CreateIconFromResourceEx(
-          buffer.as_ptr().offset(offset) as _,
-          buffer.len() as _,
-          true,
-          0x00030000,
-          0,
-          0,
-          w32wm::LR_DEFAULTCOLOR,
-        ) {
-          hicon if hicon.is_invalid() => None,
-          hicon => Some(hicon),
-        }
-      }
-    }
+    w32wm::CreateIcon(
+      w32f::HINSTANCE::default(),
+      width as i32,
+      height as i32,
+      1,
+      (4 * 8) as u8,
+      and_mask.as_ptr() as *const u8,
+      rgba.as_ptr() as *const u8,
+    ) as w32wm::HICON
   }
 }

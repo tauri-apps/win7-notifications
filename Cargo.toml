@@ -19,9 +19,9 @@ targets = [ "x86_64-pc-windows-msvc" ]
 [dependencies]
 once_cell = "1.9.0"
 
-  [dependencies.windows]
-  version = "0.32.0"
-  features = [
+[dependencies.windows]
+version = "0.32.0"
+features = [
   "alloc",
   "Win32_Foundation",
   "Win32_System_LibraryLoader",
@@ -36,3 +36,4 @@ once_cell = "1.9.0"
 
 [dev-dependencies]
 tao = "0.6.2"
+image = "0.24"
