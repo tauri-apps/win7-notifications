@@ -125,6 +125,7 @@ thread_local! {
 pub fn com_initialized() {
   COM_INITIALIZED.with(|_| {});
 }
+
 pub unsafe fn skip_taskbar(hwnd: HWND) {
   com_initialized();
 
