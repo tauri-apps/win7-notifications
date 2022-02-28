@@ -1,5 +1,14 @@
 # Changelog
 
+## \[1.0.0]
+
+- Add gaps between multiple notifications
+  - [7e20e30](https://github.com/tauri-apps/win7-notifications/commit/7e20e303221a2f7c5e4db25ecd1afb039f1066c3) feat: add gaps between notifications on 2022-01-06
+- **Breaking change** Notification icon must be "32bpp RGBA data" and width and height must be specified now, check `Notification::icon` for more info.
+  - [aa3ffe8](https://github.com/tauri-apps/win7-notifications/commit/aa3ffe8c0740ad89d83d9d514312778615730fa8) feat: improve icon handling on 2022-02-28
+- Migrate to `windows-sys` crate.
+  - [e1110a0](https://github.com/tauri-apps/win7-notifications/commit/e1110a0ada0d03b0d42645e62c921b44248ae95d) feat: migrate to `windows-sys` crate on 2022-02-28
+
 ## \[0.2.4]
 
 - Properly clean notifications data from memory.
