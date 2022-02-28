@@ -6,7 +6,7 @@
 Send Windows 10 styled notifications on Windows 7.
 
 #### Note:
-This crate requires a win32 event loop to be running on the thread, otherwise the notification will close immediately, check [examples/single.rs](examples/single.rs) which uses [tao](https://github.com/tauri-apps/tao) or you can use [winit](https://github.com/rust-windowing/winit) or just roll your own win32 event loop.
+This crate requires a win32 event loop to be running on the thread, otherwise the notification will close immediately, check [examples/single.rs](examples/single.rs) which uses [winit](https://github.com/rust-windowing/winit) or just roll your own win32 event loop.
 
 
 ### TODO:

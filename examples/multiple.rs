@@ -1,29 +1,33 @@
 use std::path::Path;
 
-use tao::{
-  event::{Event, StartCause},
-  event_loop::EventLoop,
-};
 use win7_notifications::{Notification, Timeout};
+use winit::{
+  event::{Event, StartCause},
+  event_loop::{ControlFlow, EventLoop},
+};
 fn main() {
   let event_loop = EventLoop::new();
   let path = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/icon.png");
   let (icon, w, h) = load_icon(Path::new(path));
 
-  event_loop.run(move |event, _, _| match event {
-    Event::NewEvents(e) if e == StartCause::Init => {
-      for i in 1..5 {
-        Notification::new()
-          .appname("App name")
-          .summary("Critical Error")
-          .body(format!("Just kidding, this is just the notification example {}.", i).as_str())
-          .icon(icon.clone(), w, h)
-          .timeout(Timeout::Default)
-          .show()
-          .unwrap();
+  event_loop.run(move |event, _, control_flow| {
+    *control_flow = ControlFlow::Poll;
+
+    match event {
+      Event::NewEvents(e) if e == StartCause::Init => {
+        for i in 1..5 {
+          Notification::new()
+            .appname("App name")
+            .summary("Critical Error")
+            .body(format!("Just kidding, this is just the notification example {}.", i).as_str())
+            .icon(icon.clone(), w, h)
+            .timeout(Timeout::Default)
+            .show()
+            .unwrap();
+        }
       }
+      _ => (),
     }
-    _ => (),
   });
 }
 

@@ -4,33 +4,19 @@
 
 use once_cell::sync::Lazy;
 use std::{
+  ptr,
   sync::Mutex,
   thread::{sleep, spawn},
   time::Duration,
 };
-use windows::{
-  core::*,
-  Win32::{
-    Foundation::{BOOL, HINSTANCE, HWND, LPARAM, LRESULT, PWSTR, RECT, WPARAM},
-    Graphics::{
-      Dwm::{DwmExtendFrameIntoClientArea, DwmIsCompositionEnabled},
-      Gdi::{
-        BeginPaint, CreateSolidBrush, DrawTextW, EndPaint, InvalidateRect, SetBkColor,
-        SetTextColor, TextOutW, DT_EXTERNALLEADING, DT_LEFT, DT_WORDBREAK, HBRUSH, MONITORINFOEXW,
-        PAINTSTRUCT,
-      },
-    },
-    Media::Audio::{PlaySoundW, SND_ASYNC},
-    System::LibraryLoader::GetModuleHandleW,
-    UI::{
-      Controls::MARGINS,
-      WindowsAndMessaging::{
-        self as w32wm, CloseWindow, CreateWindowExW, DefWindowProcW, DrawIconEx, LoadCursorW,
-        RegisterClassW, SetCursor, SetWindowPos, ShowWindow, CREATESTRUCTW, DI_NORMAL,
-        GWL_USERDATA, HMENU, IDC_ARROW, IDC_HAND, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
-        SW_HIDE, SW_SHOW, WNDCLASSW, WS_CAPTION, WS_EX_TOPMOST, WS_SYSMENU, WS_VISIBLE,
-      },
-    },
+use windows_sys::Win32::{
+  Foundation::*,
+  Graphics::{Dwm::*, Gdi::*},
+  Media::Audio::*,
+  System::LibraryLoader::*,
+  UI::{
+    Controls::*,
+    WindowsAndMessaging::{self as w32wm, *},
   },
 };
 
@@ -121,11 +107,11 @@ impl Notification {
   /// `rgba.len() / 4`. Otherwise, this will panic.
   pub fn icon(&mut self, rgba: Vec<u8>, width: u32, height: u32) -> &mut Notification {
     if rgba.len() % util::PIXEL_SIZE != 0 {
-      panic!();
+      // panic!();
     }
     let pixel_count = rgba.len() / util::PIXEL_SIZE;
     if pixel_count != (width * height) as usize {
-      panic!()
+      // panic!()
     } else {
       self.icon = rgba;
       self.icon_width = width;
@@ -143,46 +129,53 @@ impl Notification {
   /// Shows the Notification.
   ///
   /// Requires a win32 event_loop to be running on the thread, otherwise the notification will close immediately.
-  pub fn show(&self) -> Result<()> {
+  pub fn show(&self) -> Result<(), u32> {
     unsafe {
-      let hinstance = GetModuleHandleW(PWSTR::default());
+      let hinstance = GetModuleHandleW(ptr::null());
 
-      let mut class_name = String::from("win7-notify-rust");
-      let wnd_class = WNDCLASSW {
+      let class_name = util::encode_wide("win7-notifications");
+      let wnd_class = WNDCLASSEXW {
         lpfnWndProc: Some(window_proc),
-        lpszClassName: PWSTR(class_name.as_mut_ptr() as _),
+        lpszClassName: class_name.as_ptr(),
         hInstance: hinstance,
         hbrBackground: CreateSolidBrush(WC),
-        ..Default::default()
+        cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
+        style: CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        cbClsExtra: 0,
+        cbWndExtra: 0,
+        hIcon: 0,
+        hCursor: 0, // must be null in order for cursor state to work properly
+        lpszMenuName: ptr::null(),
+        hIconSm: 0,
       };
-      RegisterClassW(&wnd_class);
+      RegisterClassExW(&wnd_class);
 
       if let Ok(pm) = PRIMARY_MONITOR.lock() {
         let RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
 
         let data = WindowData {
-          window: HWND::default(),
+          window: 0,
           mouse_hovering_close_btn: false,
           notification: self.clone(),
         };
 
         let hwnd = CreateWindowExW(
           WS_EX_TOPMOST,
-          PWSTR(class_name.as_mut_ptr() as _),
-          "win7-notifications-window",
+          class_name.as_ptr(),
+          util::encode_wide("win7-notifications-window").as_ptr(),
           WS_SYSMENU | WS_CAPTION | WS_VISIBLE,
           right - NW - 15,
           bottom - NH - 15,
           NW,
           NH,
-          HWND::default(),
-          HMENU::default(),
+          0,
+          0,
           hinstance,
           Box::into_raw(Box::new(data)) as _,
         );
 
-        if hwnd.is_invalid() {
-          return Err(Error::from_win32());
+        if hwnd == 0 {
+          return Err(GetLastError());
         }
 
         // re-order active notifications and make room for new one
@@ -191,8 +184,8 @@ impl Notification {
           let mut i = active_notifications.len() as i32;
           for hwnd in active_notifications.iter() {
             SetWindowPos(
-              hwnd,
-              HWND::default(),
+              *hwnd,
+              0,
               right - NW - 15,
               bottom - 15 - (NH * i) - 10 * (i - 1),
               0,
@@ -204,19 +197,23 @@ impl Notification {
         }
 
         // shadows
-        if DwmIsCompositionEnabled()?.as_bool() {
+        let mut is_dwm_enabled = 0;
+        DwmIsCompositionEnabled(&mut is_dwm_enabled);
+        if is_dwm_enabled == 1 {
           let margins = MARGINS {
             cxLeftWidth: 1,
-            ..Default::default()
+            cxRightWidth: 0,
+            cyBottomHeight: 0,
+            cyTopHeight: 0,
           };
-          DwmExtendFrameIntoClientArea(hwnd, &margins)?;
+          DwmExtendFrameIntoClientArea(hwnd, &margins);
         }
 
-        util::skip_taskbar(hwnd)?;
+        util::skip_taskbar(hwnd);
         ShowWindow(hwnd, SW_SHOW);
         // Passing an invalid path to `PlaySoundW` will make windows play default sound.
         // https://docs.microsoft.com/en-us/previous-versions/dd743680(v=vs.85)#remarks
-        PlaySoundW("NULL", HINSTANCE::default(), SND_ASYNC);
+        PlaySoundW(util::encode_wide("null").as_ptr(), hinstance, SND_ASYNC);
 
         let timeout = self.timeout;
         spawn(move || {
@@ -246,8 +243,8 @@ unsafe fn close_notification(hwnd: HWND) {
       let RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
       for (i, h) in active_noti.iter().rev().enumerate() {
         SetWindowPos(
-          h,
-          HWND::default(),
+          *h,
+          0,
           right - NW - 15,
           bottom - (NH * (i + 1) as i32) - 15,
           0,
@@ -276,7 +273,7 @@ pub unsafe extern "system" fn window_proc(
   match msg {
     w32wm::WM_NCCREATE => {
       if userdata == 0 {
-        let createstruct = &*(lparam.0 as *const CREATESTRUCTW);
+        let createstruct = &*(lparam as *const CREATESTRUCTW);
         userdata = createstruct.lpCreateParams as isize;
         util::SetWindowLongPtrW(hwnd, GWL_USERDATA, userdata);
       }
@@ -284,7 +281,7 @@ pub unsafe extern "system" fn window_proc(
     }
 
     // make the window borderless
-    w32wm::WM_NCCALCSIZE => LRESULT(0),
+    w32wm::WM_NCCALCSIZE => 0,
 
     w32wm::WM_CREATE => {
       let userdata = userdata as *mut WindowData;
@@ -294,7 +291,19 @@ pub unsafe extern "system" fn window_proc(
 
     w32wm::WM_PAINT => {
       let userdata = userdata as *mut WindowData;
-      let mut ps = PAINTSTRUCT::default();
+      let mut ps = PAINTSTRUCT {
+        fErase: 0,
+        fIncUpdate: 0,
+        fRestore: 0,
+        hdc: 0,
+        rcPaint: RECT {
+          bottom: 0,
+          left: 0,
+          right: 0,
+          top: 0,
+        },
+        rgbReserved: [0 as u8; 32],
+      };
       let hdc = BeginPaint(hwnd, &mut ps);
 
       SetBkColor(hdc, WC);
@@ -306,19 +315,10 @@ pub unsafe extern "system" fn window_proc(
         (*userdata).notification.icon_width,
         (*userdata).notification.icon_height,
       );
-      DrawIconEx(
-        hdc,
-        NM,
-        NM,
-        hicon,
-        NIS,
-        NIS,
-        0,
-        HBRUSH::default(),
-        DI_NORMAL,
-      );
+      DrawIconEx(hdc, NM, NM, hicon, NIS, NIS, 0, 0, DI_NORMAL);
 
       // draw notification close button
+      util::set_font(hdc, "", 16, 700);
       SetTextColor(
         hdc,
         if (*userdata).mouse_hovering_close_btn {
@@ -327,27 +327,35 @@ pub unsafe extern "system" fn window_proc(
           SC
         },
       );
-      TextOutW(hdc, NW - NM - NM / 2, NM, "X", 1);
+      TextOutW(
+        hdc,
+        NW - NM - NM / 2,
+        NM,
+        util::encode_wide("X").as_ptr(),
+        1,
+      );
 
       // draw notification app name
       SetTextColor(hdc, TC);
       util::set_font(hdc, "Segeo UI", 15, 400);
+      let appname = util::encode_wide((*userdata).notification.appname.clone());
       TextOutW(
         hdc,
         NM + NIS + (NM / 2),
         NM,
-        (*userdata).notification.appname.clone(),
-        (*userdata).notification.appname.len() as _,
+        appname.as_ptr(),
+        appname.len() as _,
       );
 
       // draw notification summary (title)
       util::set_font(hdc, "Segeo UI", 17, 700);
+      let summary = util::encode_wide((*userdata).notification.summary.clone());
       TextOutW(
         hdc,
         NM,
         NM + NIS + (NM / 2),
-        (*userdata).notification.summary.clone(),
-        (*userdata).notification.summary.len() as _,
+        summary.as_ptr(),
+        summary.len() as _,
       );
 
       // draw notification body
@@ -359,15 +367,16 @@ pub unsafe extern "system" fn window_proc(
         right: NW - NM,
         bottom: NH - NM,
       };
+      let body = util::encode_wide((*userdata).notification.body.clone());
       DrawTextW(
         hdc,
-        (*userdata).notification.body.clone(),
-        (*userdata).notification.body.len() as _,
+        body.as_ptr(),
+        body.len() as _,
         &mut rc,
         DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK,
       );
 
-      EndPaint(HWND(hdc.0), &ps);
+      EndPaint(hdc, &ps);
       DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
@@ -376,13 +385,10 @@ pub unsafe extern "system" fn window_proc(
 
       let (x, y) = (util::GET_X_LPARAM(lparam), util::GET_Y_LPARAM(lparam));
       let hit = close_button_hit_test(x, y);
-      SetCursor(LoadCursorW(
-        HINSTANCE::default(),
-        if hit { IDC_HAND } else { IDC_ARROW },
-      ));
+      SetCursor(LoadCursorW(0, if hit { IDC_HAND } else { IDC_ARROW }));
       if hit != (*userdata).mouse_hovering_close_btn {
         // only trigger redraw if the previous state is different than the new state
-        InvalidateRect(hwnd, std::ptr::null(), BOOL(0));
+        InvalidateRect(hwnd, std::ptr::null(), 0);
       }
       (*userdata).mouse_hovering_close_btn = hit;
 
