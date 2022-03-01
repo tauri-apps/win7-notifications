@@ -107,11 +107,11 @@ impl Notification {
   /// `rgba.len() / 4`. Otherwise, this will panic.
   pub fn icon(&mut self, rgba: Vec<u8>, width: u32, height: u32) -> &mut Notification {
     if rgba.len() % util::PIXEL_SIZE != 0 {
-      // panic!();
+      eprintln!("The length of `rgba` is not divisible by 4");
     }
     let pixel_count = rgba.len() / util::PIXEL_SIZE;
     if pixel_count != (width * height) as usize {
-      // panic!()
+      eprintln!("`width * height` is not equal `rgba.len() / 4`");
     } else {
       self.icon = rgba;
       self.icon_width = width;
