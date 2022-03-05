@@ -1,5 +1,21 @@
 # Changelog
 
+## \[0.3.0]
+
+- Properly clean notifications data from memory.
+  - [4a1e746](https://github.com/tauri-apps/win7-notifications/commit/4a1e7465fa5623d48dcd74e57e937fa2ae471ab8) fix: clean notification data when it is closed on 2022-01-01
+- Change close button color when mouse is hovering.
+  - [80bca00](https://github.com/tauri-apps/win7-notifications/commit/80bca0085d3395e9c902613a879c0c5242f5ff0c) feat: change close btn color when hovering on 2022-01-05
+- Fix cursor style when the mouse is over the notification.
+  - [2f025e8](https://github.com/tauri-apps/win7-notifications/commit/2f025e8f585ba7458cc3e756af13d1f6f6908864) fix: fix cursor style is stuck on loading on 2022-01-05
+- Add gaps between multiple notifications
+  - [a47bc6b](https://github.com/tauri-apps/win7-notifications/commit/a47bc6b8315b03f55d1d8f104500d4bea65360d1) feat: add gaps between notifications on 2022-01-06
+- **Breaking change** Notification icon must be "32bpp RGBA data" and width and height must be specified now, check `Notification::icon` for more info.
+  - [a52b763](https://github.com/tauri-apps/win7-notifications/commit/a52b76383fd41497464f8b71ca10551f0202ca55) feat: improve icon handling on 2022-02-28
+- Migrate to `windows-sys` crate.
+  - [8bf78a2](https://github.com/tauri-apps/win7-notifications/commit/8bf78a215a500e6e6018f7a31cfc78d8c7e588c3) feat: migrate to `windows-sys` crate on 2022-02-28
+  - [42ed6fc](https://github.com/tauri-apps/win7-notifications/commit/42ed6fc23161b7130434a6200a78de4ab76fcb96) chore: update wrong version bump on 2022-03-05
+
 ## \[0.2.3]
 
 - Migrate to rust edition 2021.
