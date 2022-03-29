@@ -150,7 +150,8 @@ pub unsafe fn skip_taskbar(hwnd: HWND) {
   });
 }
 
-pub unsafe fn set_font(hdc: HDC, name: &str, size: i32, weight: i32) {
+/// Returns a tuple of new and old `HFONT` handle
+pub unsafe fn set_font(hdc: HDC, name: &str, size: i32, weight: i32) -> (isize, isize) {
   let name = format!("{}\0", name);
   let hfont = CreateFontW(
     size,
@@ -168,7 +169,7 @@ pub unsafe fn set_font(hdc: HDC, name: &str, size: i32, weight: i32) {
     FF_DONTCARE,
     name.as_ptr() as _,
   );
-  SelectObject(hdc, hfont);
+  (hfont, SelectObject(hdc, hfont))
 }
 
 #[allow(dead_code)]

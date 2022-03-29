@@ -362,7 +362,7 @@ pub unsafe extern "system" fn window_proc(
       // draw notification app name
       {
         SetTextColor(hdc, TC);
-        util::set_font(hdc, "Segeo UI", 15, 400);
+        let (hfont, old_hfont) = util::set_font(hdc, "Segeo UI", 15, 400);
         let appname = util::encode_wide((*userdata).notification.appname.clone());
         TextOutW(
           hdc,
@@ -371,11 +371,13 @@ pub unsafe extern "system" fn window_proc(
           appname.as_ptr(),
           appname.len() as _,
         );
+        SelectObject(hdc, old_hfont);
+        DeleteObject(hfont);
       }
 
       // draw notification summary (title)
       {
-        util::set_font(hdc, "Segeo UI", 17, 700);
+        let (hfont, old_hfont) = util::set_font(hdc, "Segeo UI", 17, 700);
         let summary = util::encode_wide((*userdata).notification.summary.clone());
         TextOutW(
           hdc,
@@ -384,12 +386,14 @@ pub unsafe extern "system" fn window_proc(
           summary.as_ptr(),
           summary.len() as _,
         );
+        SelectObject(hdc, old_hfont);
+        DeleteObject(hfont);
       }
 
       // draw notification body
       {
         SetTextColor(hdc, SC);
-        util::set_font(hdc, "Segeo UI", 17, 400);
+        let (hfont, old_hfont) = util::set_font(hdc, "Segeo UI", 17, 400);
         let mut rc = RECT {
           left: NM,
           top: NM + NIS + (NM / 2) + 17 + (NM / 2),
@@ -405,9 +409,12 @@ pub unsafe extern "system" fn window_proc(
           DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK,
         );
 
-        EndPaint(hdc, &ps);
-        DefWindowProcW(hwnd, msg, wparam, lparam)
+        SelectObject(hdc, old_hfont);
+        DeleteObject(hfont);
       }
+
+      EndPaint(hdc, &ps);
+      DefWindowProcW(hwnd, msg, wparam, lparam)
     }
 
     w32wm::WM_MOUSEMOVE => {
