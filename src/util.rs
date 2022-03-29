@@ -22,6 +22,7 @@ pub fn current_exe_name() -> String {
     .unwrap()
     .to_owned()
 }
+
 pub fn encode_wide(string: impl AsRef<OsStr>) -> Vec<u16> {
   string.as_ref().encode_wide().chain(once(0)).collect()
 }
@@ -122,12 +123,8 @@ thread_local! {
   static TASKBAR_LIST: Cell<*mut ITaskbarList> = Cell::new(ptr::null_mut());
 }
 
-pub fn com_initialized() {
-  COM_INITIALIZED.with(|_| {});
-}
-
 pub unsafe fn skip_taskbar(hwnd: HWND) {
-  com_initialized();
+  COM_INITIALIZED.with(|_| {});
 
   TASKBAR_LIST.with(|taskbar_list_ptr| {
     let mut taskbar_list = taskbar_list_ptr.get();
@@ -183,14 +180,14 @@ pub(crate) struct Pixel {
 }
 
 impl Pixel {
-  fn to_bgra_mut(&mut self) {
+  fn convert_to_bgra_mut(&mut self) {
     std::mem::swap(&mut self.r, &mut self.b);
   }
 }
 
 pub(crate) const PIXEL_SIZE: usize = std::mem::size_of::<Pixel>();
 
-pub fn get_hicon_from_buffer(rgba: Vec<u8>, width: u32, height: u32) -> w32wm::HICON {
+pub fn get_hicon_from_32bpp_rgba(rgba: Vec<u8>, width: u32, height: u32) -> w32wm::HICON {
   let mut rgba = rgba;
   let pixel_count = rgba.len() / PIXEL_SIZE;
   let mut and_mask = Vec::with_capacity(pixel_count);
@@ -198,7 +195,7 @@ pub fn get_hicon_from_buffer(rgba: Vec<u8>, width: u32, height: u32) -> w32wm::H
     unsafe { std::slice::from_raw_parts_mut(rgba.as_mut_ptr() as *mut Pixel, pixel_count) };
   for pixel in pixels {
     and_mask.push(pixel.a.wrapping_sub(std::u8::MAX)); // invert alpha channel
-    pixel.to_bgra_mut();
+    pixel.convert_to_bgra_mut();
   }
   assert_eq!(and_mask.len(), pixel_count);
   unsafe {
@@ -212,4 +209,8 @@ pub fn get_hicon_from_buffer(rgba: Vec<u8>, width: u32, height: u32) -> w32wm::H
       rgba.as_ptr() as *const u8,
     ) as w32wm::HICON
   }
+}
+
+pub fn rect_contains(rect: RECT, x: i32, y: i32) -> bool {
+  (rect.left < x) && (x < rect.right) && (rect.top < y) && (y < rect.bottom)
 }

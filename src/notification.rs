@@ -20,7 +20,10 @@ use windows_sys::Win32::{
   },
 };
 
-use crate::{timeout::Timeout, util};
+use crate::{
+  timeout::Timeout,
+  util::{self, GetWindowLongPtrW, SetWindowLongPtrW, GET_X_LPARAM, GET_Y_LPARAM, RGB},
+};
 
 /// notification width
 const NW: i32 = 360;
@@ -28,14 +31,21 @@ const NW: i32 = 360;
 const NH: i32 = 170;
 /// notification margin
 const NM: i32 = 16;
-/// notification icon size (width/height)
+/// notification icon size (width or height)
 const NIS: i32 = 16;
 /// notification window bg color
-const WC: u32 = util::RGB(50, 57, 69);
+const WC: u32 = RGB(50, 57, 69);
 /// used for notification summary (title)
-const TC: u32 = util::RGB(255, 255, 255);
+const TC: u32 = RGB(255, 255, 255);
 /// used for notification body
-const SC: u32 = util::RGB(200, 200, 200);
+const SC: u32 = RGB(200, 200, 200);
+
+const CLOSE_BTN_RECT: RECT = RECT {
+  left: NW - NM - NM / 2,
+  top: NM,
+  right: (NW - NM - NM / 2) + 8,
+  bottom: NM + 8,
+};
 
 static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PRIMARY_MONITOR: Lazy<Mutex<MONITORINFOEXW>> =
@@ -178,7 +188,7 @@ impl Notification {
           return Err(GetLastError());
         }
 
-        // re-order active notifications and make room for new one
+        // reposition active notifications and make room for new one
         if let Ok(mut active_notifications) = ACTIVE_NOTIFICATIONS.lock() {
           active_notifications.push(hwnd);
           let mut i = active_notifications.len() as i32;
@@ -238,7 +248,7 @@ unsafe fn close_notification(hwnd: HWND) {
       active_noti.remove(index);
     }
 
-    // re-order notifications
+    // reposition notifications
     if let Ok(pm) = PRIMARY_MONITOR.lock() {
       let RECT { right, bottom, .. } = pm.monitorInfo.rcWork;
       for (i, h) in active_noti.iter().rev().enumerate() {
@@ -268,14 +278,14 @@ pub unsafe extern "system" fn window_proc(
   wparam: WPARAM,
   lparam: LPARAM,
 ) -> LRESULT {
-  let mut userdata = util::GetWindowLongPtrW(hwnd, GWL_USERDATA);
+  let mut userdata = GetWindowLongPtrW(hwnd, GWL_USERDATA);
 
   match msg {
     w32wm::WM_NCCREATE => {
       if userdata == 0 {
         let createstruct = &*(lparam as *const CREATESTRUCTW);
         userdata = createstruct.lpCreateParams as isize;
-        util::SetWindowLongPtrW(hwnd, GWL_USERDATA, userdata);
+        SetWindowLongPtrW(hwnd, GWL_USERDATA, userdata);
       }
       DefWindowProcW(hwnd, msg, wparam, lparam)
     }
@@ -305,86 +315,107 @@ pub unsafe extern "system" fn window_proc(
         rgbReserved: [0; 32],
       };
       let hdc = BeginPaint(hwnd, &mut ps);
-
       SetBkColor(hdc, WC);
-      SetTextColor(hdc, TC);
 
       // draw notification icon
-      let hicon = util::get_hicon_from_buffer(
-        (*userdata).notification.icon.clone(),
-        (*userdata).notification.icon_width,
-        (*userdata).notification.icon_height,
-      );
-      DrawIconEx(hdc, NM, NM, hicon, NIS, NIS, 0, 0, DI_NORMAL);
+      {
+        let hicon = util::get_hicon_from_32bpp_rgba(
+          (*userdata).notification.icon.clone(),
+          (*userdata).notification.icon_width,
+          (*userdata).notification.icon_height,
+        );
+        DrawIconEx(hdc, NM, NM, hicon, NIS, NIS, 0, 0, DI_NORMAL);
+      }
 
       // draw notification close button
-      util::set_font(hdc, "", 16, 700);
-      SetTextColor(
-        hdc,
-        if (*userdata).mouse_hovering_close_btn {
-          TC
-        } else {
-          SC
-        },
-      );
-      TextOutW(
-        hdc,
-        NW - NM - NM / 2,
-        NM,
-        util::encode_wide("X").as_ptr(),
-        1,
-      );
+      {
+        let hpen = CreatePen(
+          PS_SOLID,
+          2,
+          if (*userdata).mouse_hovering_close_btn {
+            TC
+          } else {
+            SC
+          },
+        );
+        let old_hpen = SelectObject(hdc, hpen);
+
+        MoveToEx(
+          hdc,
+          CLOSE_BTN_RECT.left,
+          CLOSE_BTN_RECT.top,
+          std::ptr::null_mut(),
+        );
+        LineTo(hdc, CLOSE_BTN_RECT.right, CLOSE_BTN_RECT.bottom);
+        MoveToEx(
+          hdc,
+          CLOSE_BTN_RECT.right,
+          CLOSE_BTN_RECT.top,
+          std::ptr::null_mut(),
+        );
+        LineTo(hdc, CLOSE_BTN_RECT.left, CLOSE_BTN_RECT.bottom);
+
+        SelectObject(hdc, old_hpen);
+        DeleteObject(hpen);
+      }
 
       // draw notification app name
-      SetTextColor(hdc, TC);
-      util::set_font(hdc, "Segeo UI", 15, 400);
-      let appname = util::encode_wide((*userdata).notification.appname.clone());
-      TextOutW(
-        hdc,
-        NM + NIS + (NM / 2),
-        NM,
-        appname.as_ptr(),
-        appname.len() as _,
-      );
+      {
+        SetTextColor(hdc, TC);
+        util::set_font(hdc, "Segeo UI", 15, 400);
+        let appname = util::encode_wide((*userdata).notification.appname.clone());
+        TextOutW(
+          hdc,
+          NM + NIS + (NM / 2),
+          NM,
+          appname.as_ptr(),
+          appname.len() as _,
+        );
+      }
 
       // draw notification summary (title)
-      util::set_font(hdc, "Segeo UI", 17, 700);
-      let summary = util::encode_wide((*userdata).notification.summary.clone());
-      TextOutW(
-        hdc,
-        NM,
-        NM + NIS + (NM / 2),
-        summary.as_ptr(),
-        summary.len() as _,
-      );
+      {
+        util::set_font(hdc, "Segeo UI", 17, 700);
+        let summary = util::encode_wide((*userdata).notification.summary.clone());
+        TextOutW(
+          hdc,
+          NM,
+          NM + NIS + (NM / 2),
+          summary.as_ptr(),
+          summary.len() as _,
+        );
+      }
 
       // draw notification body
-      SetTextColor(hdc, SC);
-      util::set_font(hdc, "Segeo UI", 17, 400);
-      let mut rc = RECT {
-        left: NM,
-        top: NM + NIS + (NM / 2) + 17 + (NM / 2),
-        right: NW - NM,
-        bottom: NH - NM,
-      };
-      let body = util::encode_wide((*userdata).notification.body.clone());
-      DrawTextW(
-        hdc,
-        body.as_ptr(),
-        body.len() as _,
-        &mut rc,
-        DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK,
-      );
+      {
+        SetTextColor(hdc, SC);
+        util::set_font(hdc, "Segeo UI", 17, 400);
+        let mut rc = RECT {
+          left: NM,
+          top: NM + NIS + (NM / 2) + 17 + (NM / 2),
+          right: NW - NM,
+          bottom: NH - NM,
+        };
+        let body = util::encode_wide((*userdata).notification.body.clone());
+        DrawTextW(
+          hdc,
+          body.as_ptr(),
+          body.len() as _,
+          &mut rc,
+          DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK,
+        );
 
-      EndPaint(hdc, &ps);
-      DefWindowProcW(hwnd, msg, wparam, lparam)
+        EndPaint(hdc, &ps);
+        DefWindowProcW(hwnd, msg, wparam, lparam)
+      }
     }
 
     w32wm::WM_MOUSEMOVE => {
       let userdata = userdata as *mut WindowData;
 
-      let (x, y) = (util::GET_X_LPARAM(lparam), util::GET_Y_LPARAM(lparam));
-      let hit = close_button_hit_test(x, y);
+      let (x, y) = (GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+      let hit = util::rect_contains(CLOSE_BTN_RECT, x as i32, y as i32);
+
       SetCursor(LoadCursorW(0, if hit { IDC_HAND } else { IDC_ARROW }));
       if hit != (*userdata).mouse_hovering_close_btn {
         // only trigger redraw if the previous state is different than the new state
@@ -396,8 +427,9 @@ pub unsafe extern "system" fn window_proc(
     }
 
     w32wm::WM_LBUTTONDOWN => {
-      let (x, y) = (util::GET_X_LPARAM(lparam), util::GET_Y_LPARAM(lparam));
-      if close_button_hit_test(x, y) {
+      let (x, y) = (GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+
+      if util::rect_contains(CLOSE_BTN_RECT, x as i32, y as i32) {
         close_notification(hwnd)
       }
 
@@ -412,11 +444,4 @@ pub unsafe extern "system" fn window_proc(
     }
     _ => DefWindowProcW(hwnd, msg, wparam, lparam),
   }
-}
-
-fn close_button_hit_test(x: i16, y: i16) -> bool {
-  (x > (NW - NM - NM) as i16)
-    && (x < (NW - NM / 2) as i16)
-    && (y > NM as i16)
-    && (y < (NM * 2) as i16)
 }
