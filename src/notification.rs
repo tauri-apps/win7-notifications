@@ -3,12 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use once_cell::sync::Lazy;
-use std::{
-  ptr,
-  sync::Mutex,
-  thread,
-  time::Duration,
-};
+use std::{ptr, sync::Mutex, thread, time::Duration};
 use windows_sys::Win32::{
   Foundation::*,
   Graphics::{Dwm::*, Gdi::*},
