@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use std::{
   ptr,
   sync::Mutex,
-  thread::{sleep, spawn},
+  thread,
   time::Duration,
 };
 use windows_sys::Win32::{
@@ -226,8 +226,8 @@ impl Notification {
         PlaySoundW(util::encode_wide("null").as_ptr(), hinstance, SND_ASYNC);
 
         let timeout = self.timeout;
-        spawn(move || {
-          sleep(Duration::from_millis(timeout.into()));
+        thread::spawn(move || {
+          thread::sleep(Duration::from_millis(timeout.into()));
           if timeout != Timeout::Never {
             close_notification(hwnd);
           };
