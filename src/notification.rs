@@ -50,7 +50,7 @@ static PRIMARY_MONITOR: Lazy<Mutex<MONITORINFOEXW>> =
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Notification {
-  pub icon: Vec<u8>,
+  pub icon: Option<Vec<u8>>,
   pub icon_width: u32,
   pub icon_height: u32,
   pub appname: String,
@@ -65,7 +65,7 @@ impl Default for Notification {
       appname: util::current_exe_name(),
       summary: String::new(),
       body: String::new(),
-      icon: Vec::new(),
+      icon: None,
       icon_height: 32,
       icon_width: 32,
       timeout: Timeout::Default,
@@ -112,13 +112,13 @@ impl Notification {
   /// `rgba.len() / 4`. Otherwise, this will panic.
   pub fn icon(&mut self, rgba: Vec<u8>, width: u32, height: u32) -> &mut Notification {
     if rgba.len() % util::PIXEL_SIZE != 0 {
-      eprintln!("The length of `rgba` is not divisible by 4");
+      panic!("The length of `rgba` is not divisible by 4");
     }
     let pixel_count = rgba.len() / util::PIXEL_SIZE;
     if pixel_count != (width * height) as usize {
-      eprintln!("`width * height` is not equal `rgba.len() / 4`");
+      panic!("`width * height` is not equal `rgba.len() / 4`");
     } else {
-      self.icon = rgba;
+      self.icon = Some(rgba);
       self.icon_width = width;
       self.icon_height = height;
     }
@@ -296,6 +296,7 @@ pub unsafe extern "system" fn window_proc(
 
     w32wm::WM_PAINT => {
       let userdata = userdata as *mut WindowData;
+      let notification = &(*userdata).notification;
       let mut ps = PAINTSTRUCT {
         fErase: 0,
         fIncUpdate: 0,
@@ -314,12 +315,14 @@ pub unsafe extern "system" fn window_proc(
 
       // draw notification icon
       {
-        let hicon = util::get_hicon_from_32bpp_rgba(
-          (*userdata).notification.icon.clone(),
-          (*userdata).notification.icon_width,
-          (*userdata).notification.icon_height,
-        );
-        DrawIconEx(hdc, NM, NM, hicon, NIS, NIS, 0, 0, DI_NORMAL);
+        if let Some(icon) = &notification.icon {
+          let hicon = util::get_hicon_from_32bpp_rgba(
+            icon.clone(),
+            notification.icon_width,
+            notification.icon_height,
+          );
+          DrawIconEx(hdc, NM, NM, hicon, NIS, NIS, 0, 0, DI_NORMAL);
+        }
       }
 
       // draw notification close button
@@ -358,7 +361,7 @@ pub unsafe extern "system" fn window_proc(
       {
         SetTextColor(hdc, TC);
         let (hfont, old_hfont) = util::set_font(hdc, "Segeo UI", 15, 400);
-        let appname = util::encode_wide((*userdata).notification.appname.clone());
+        let appname = util::encode_wide(&notification.appname);
         TextOutW(
           hdc,
           NM + NIS + (NM / 2),
@@ -373,7 +376,7 @@ pub unsafe extern "system" fn window_proc(
       // draw notification summary (title)
       {
         let (hfont, old_hfont) = util::set_font(hdc, "Segeo UI", 17, 700);
-        let summary = util::encode_wide((*userdata).notification.summary.clone());
+        let summary = util::encode_wide(&notification.summary);
         TextOutW(
           hdc,
           NM,
@@ -395,7 +398,7 @@ pub unsafe extern "system" fn window_proc(
           right: NW - NM,
           bottom: NH - NM,
         };
-        let body = util::encode_wide((*userdata).notification.body.clone());
+        let body = util::encode_wide(&notification.body);
         DrawTextW(
           hdc,
           body.as_ptr(),

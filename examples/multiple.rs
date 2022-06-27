@@ -20,7 +20,6 @@ fn main() {
             .appname("App name")
             .summary("Critical Error")
             .body(format!("Just kidding, this is just the notification example {}.", i).as_str())
-            .icon(icon.clone(), w, h)
             .timeout(Timeout::Default)
             .show()
             .unwrap();
