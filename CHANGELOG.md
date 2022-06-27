@@ -1,5 +1,10 @@
 # Changelog
 
+## \[0.3.1]
+
+- Fix crash when a notification doesn't have an icon.
+  - [eabcae6](https://github.com/tauri-apps/win7-notifications/commit/eabcae6edb0443cb1ca41ff45815d7de9002d0a3) fix: fix crash when a notficiation didn't have an icon on 2022-06-28
+
 ## \[0.3.0]
 
 - Properly clean notifications data from memory.
