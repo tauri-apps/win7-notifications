@@ -443,7 +443,7 @@ pub unsafe extern "system" fn window_proc(
 
         w32wm::WM_DESTROY => {
             let userdata = userdata as *mut WindowData;
-            Box::from_raw(userdata);
+            drop(Box::from_raw(userdata));
 
             DefWindowProcW(hwnd, msg, wparam, lparam)
         }
