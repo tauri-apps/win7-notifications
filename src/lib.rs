@@ -20,7 +20,7 @@
 //!     .appname("App name")
 //!     .summary("Critical Error")
 //!     .body("Just kidding, this is just the notification example.")
-//!     .icon(icon.to_vec())
+//!     .icon(icon.to_vec(), 32, 32)
 //!     .timeout(Timeout::Default) // 5000 milliseconds
 //!     .show().unwrap();
 //! ```
@@ -34,7 +34,7 @@
 //!     .appname("App name")
 //!     .summary("Critical Error")
 //!     .body("Just kidding, this is just the notification example.")
-//!     .icon(icon.to_vec())
+//!     .icon(icon.to_vec(), 32, 32)
 //!     .timeout(Timeout::Never)
 //!     .show().unwrap();
 //! ```

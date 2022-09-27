@@ -4,14 +4,17 @@
 
 use once_cell::sync::Lazy;
 use std::{ptr, sync::Mutex, thread, time::Duration};
-use windows_sys::Win32::{
-    Foundation::*,
-    Graphics::{Dwm::*, Gdi::*},
-    Media::Audio::*,
-    System::LibraryLoader::*,
-    UI::{
-        Controls::*,
-        WindowsAndMessaging::{self as w32wm, *},
+use windows_sys::{
+    w,
+    Win32::{
+        Foundation::*,
+        Graphics::{Dwm::*, Gdi::*},
+        Media::Audio::*,
+        System::LibraryLoader::*,
+        UI::{
+            Controls::*,
+            WindowsAndMessaging::{self as w32wm, *},
+        },
     },
 };
 
@@ -138,10 +141,10 @@ impl Notification {
         unsafe {
             let hinstance = GetModuleHandleW(ptr::null());
 
-            let class_name = util::encode_wide("win7-notifications");
+            let class_name = w!("win7-notifications");
             let wnd_class = WNDCLASSEXW {
                 lpfnWndProc: Some(window_proc),
-                lpszClassName: class_name.as_ptr(),
+                lpszClassName: class_name,
                 hInstance: hinstance,
                 hbrBackground: CreateSolidBrush(WC),
                 cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
@@ -166,8 +169,8 @@ impl Notification {
 
                 let hwnd = CreateWindowExW(
                     WS_EX_TOPMOST,
-                    class_name.as_ptr(),
-                    util::encode_wide("win7-notifications-window").as_ptr(),
+                    class_name,
+                    w!("win7-notifications-window"),
                     WS_SYSMENU | WS_CAPTION | WS_VISIBLE,
                     right - NW - 15,
                     bottom - NH - 15,
@@ -218,7 +221,7 @@ impl Notification {
                 ShowWindow(hwnd, SW_SHOW);
                 // Passing an invalid path to `PlaySoundW` will make windows play default sound.
                 // https://docs.microsoft.com/en-us/previous-versions/dd743680(v=vs.85)#remarks
-                PlaySoundW(util::encode_wide("null").as_ptr(), hinstance, SND_ASYNC);
+                PlaySoundW(w!("null"), hinstance, SND_ASYNC);
 
                 let timeout = self.timeout;
                 thread::spawn(move || {
@@ -398,10 +401,10 @@ pub unsafe extern "system" fn window_proc(
                     right: NW - NM,
                     bottom: NH - NM,
                 };
-                let body = util::encode_wide(&notification.body);
+                let mut body = util::encode_wide(&notification.body);
                 DrawTextW(
                     hdc,
-                    body.as_ptr(),
+                    body.as_mut_ptr(),
                     body.len() as _,
                     &mut rc,
                     DT_LEFT | DT_EXTERNALLEADING | DT_WORDBREAK,
