@@ -201,7 +201,7 @@ pub fn get_hicon_from_32bpp_rgba(rgba: Vec<u8>, width: u32, height: u32) -> w32w
     assert_eq!(and_mask.len(), pixel_count);
     unsafe {
         w32wm::CreateIcon(
-            HINSTANCE::default(),
+            HMODULE::default(),
             width as i32,
             height as i32,
             1,
