@@ -44,6 +44,12 @@ const CLOSE_BTN_RECT: RECT = RECT {
     right: (NW - NM - NM / 2) + 8,
     bottom: NM + 8,
 };
+const CLOSE_BTN_RECT_EXTRA: RECT = RECT {
+    left: CLOSE_BTN_RECT.left - 8,
+    top: CLOSE_BTN_RECT.top - 8,
+    right: CLOSE_BTN_RECT.right + 8,
+    bottom: CLOSE_BTN_RECT.bottom + 8,
+};
 
 static ACTIVE_NOTIFICATIONS: Lazy<Mutex<Vec<HWND>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static PRIMARY_MONITOR: Lazy<Mutex<MONITORINFOEXW>> =
@@ -60,6 +66,7 @@ pub struct Notification {
     pub summary: String,
     pub body: String,
     pub timeout: Timeout,
+    pub silent: bool,
 }
 
 impl Default for Notification {
@@ -72,6 +79,7 @@ impl Default for Notification {
             icon_height: 32,
             icon_width: 32,
             timeout: Timeout::Default,
+            silent: false,
         }
     }
 }
@@ -131,6 +139,12 @@ impl Notification {
     /// Set the `timeout` field.
     pub fn timeout(&mut self, timeout: Timeout) -> &mut Notification {
         self.timeout = timeout;
+        self
+    }
+
+    /// Set the `silent` field.
+    pub fn silent(&mut self, silent: bool) -> &mut Notification {
+        self.silent = silent;
         self
     }
 
@@ -219,9 +233,11 @@ impl Notification {
 
                 util::skip_taskbar(hwnd);
                 ShowWindow(hwnd, SW_SHOW);
-                // Passing an invalid path to `PlaySoundW` will make windows play default sound.
-                // https://docs.microsoft.com/en-us/previous-versions/dd743680(v=vs.85)#remarks
-                PlaySoundW(w!("null"), hinstance, SND_ASYNC);
+                if !self.silent {
+                    // Passing an invalid path to `PlaySoundW` will make windows play default sound.
+                    // https://docs.microsoft.com/en-us/previous-versions/dd743680(v=vs.85)#remarks
+                    PlaySoundW(w!("null"), hinstance, SND_ASYNC);
+                }
 
                 let timeout = self.timeout;
                 thread::spawn(move || {
@@ -422,7 +438,7 @@ pub unsafe extern "system" fn window_proc(
             let userdata = userdata as *mut WindowData;
 
             let (x, y) = (GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
-            let hit = util::rect_contains(CLOSE_BTN_RECT, x as i32, y as i32);
+            let hit = util::rect_contains(CLOSE_BTN_RECT_EXTRA, x as i32, y as i32);
 
             SetCursor(LoadCursorW(0, if hit { IDC_HAND } else { IDC_ARROW }));
             if hit != (*userdata).mouse_hovering_close_btn {
@@ -437,7 +453,7 @@ pub unsafe extern "system" fn window_proc(
         w32wm::WM_LBUTTONDOWN => {
             let (x, y) = (GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
 
-            if util::rect_contains(CLOSE_BTN_RECT, x as i32, y as i32) {
+            if util::rect_contains(CLOSE_BTN_RECT_EXTRA, x as i32, y as i32) {
                 close_notification(hwnd)
             }
 
