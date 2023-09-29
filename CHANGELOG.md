@@ -1,5 +1,9 @@
 # Changelog
 
+## \[0.4.1]
+
+- [`62bbd8b`](https://github.com/tauri-apps/win7-notifications/commit/62bbd8b3ed55467b76c16fadb843e060804ea2fe) Fix notifications were minimized but not actually closed by sending `WM_CLOSE`.
+
 ## \[0.4.0]
 
 - [`c3c0136`](https://github.com/tauri-apps/win7-notifications/commit/c3c013691eeb71693ed2aa5c6f8b856e6c5938f4)([#50](https://github.com/tauri-apps/win7-notifications/pull/50)) Add option to make the notification silent
