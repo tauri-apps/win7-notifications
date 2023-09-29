@@ -257,6 +257,12 @@ unsafe fn close_notification(hwnd: HWND) {
     ShowWindow(hwnd, SW_HIDE);
     CloseWindow(hwnd);
 
+    // We can NOT call `DestroyWindow` from this window
+    // Sending WM_CLOSE will by default make the windows call it on itself.
+    // Note WM_DESTROY should not be sent directly as it would create a leak
+    // see https://devblogs.microsoft.com/oldnewthing/20110926-00/?p=9553
+    SendMessageA(hwnd, WM_CLOSE, 0, 0);
+
     if let Ok(mut active_noti) = ACTIVE_NOTIFICATIONS.lock() {
         if let Some(index) = active_noti.iter().position(|e| *e == hwnd) {
             active_noti.remove(index);
