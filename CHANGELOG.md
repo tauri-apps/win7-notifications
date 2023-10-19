@@ -1,5 +1,9 @@
 # Changelog
 
+## \[0.4.2]
+
+- [`13e2cbc`](https://github.com/tauri-apps/win7-notifications/commit/13e2cbcdcb59a6dc9c3a6588b9e4f57ac6662fbf)([#55](https://github.com/tauri-apps/win7-notifications/pull/55)) Relax version requirement of `once_cell` crate to `1`.
+
 ## \[0.4.1]
 
 - [`62bbd8b`](https://github.com/tauri-apps/win7-notifications/commit/62bbd8b3ed55467b76c16fadb843e060804ea2fe) Fix notifications were minimized but not actually closed by sending `WM_CLOSE`.
