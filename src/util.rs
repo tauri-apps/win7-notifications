@@ -206,8 +206,8 @@ pub fn get_hicon_from_32bpp_rgba(rgba: Vec<u8>, width: u32, height: u32) -> w32w
             height as i32,
             1,
             (4 * 8) as u8,
-            and_mask.as_ptr() as *const u8,
-            rgba.as_ptr() as *const u8,
+            and_mask.as_ptr(),
+            rgba.as_ptr(),
         ) as w32wm::HICON
     }
 }
