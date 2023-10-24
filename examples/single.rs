@@ -18,7 +18,7 @@ fn main() {
         event_loop.set_control_flow(ControlFlow::Poll);
 
         match event {
-            Event::NewEvents(e) if e == StartCause::Init => {
+            Event::NewEvents(StartCause::Init) => {
                 Notification::new()
                     .appname("App name")
                     .summary("Critical Error")

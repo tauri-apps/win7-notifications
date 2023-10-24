@@ -18,7 +18,7 @@ fn main() {
         event_loop.set_control_flow(ControlFlow::Poll);
 
         match event {
-            Event::NewEvents(e) if e == StartCause::Init => {
+            Event::NewEvents(StartCause::Init) => {
                 for i in 1..5 {
                     Notification::new()
                         .appname("App name")
