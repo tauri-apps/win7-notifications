@@ -10,32 +10,37 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
 };
 fn main() {
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new().unwrap();
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/icon.png");
     let (icon, w, h) = load_icon(Path::new(path));
 
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
+    event_loop
+        .run(move |event, event_loop| {
+            event_loop.set_control_flow(ControlFlow::Poll);
 
-        match event {
-            Event::NewEvents(e) if e == StartCause::Init => {
-                for i in 1..5 {
-                    Notification::new()
-                        .appname("App name")
-                        .summary("Critical Error")
-                        .body(
-                            format!("Just kidding, this is just the notification example {}.", i)
+            match event {
+                Event::NewEvents(StartCause::Init) => {
+                    for i in 1..5 {
+                        Notification::new()
+                            .appname("App name")
+                            .summary("Critical Error")
+                            .body(
+                                format!(
+                                    "Just kidding, this is just the notification example {}.",
+                                    i
+                                )
                                 .as_str(),
-                        )
-                        .icon(icon.clone(), w, h)
-                        .timeout(Timeout::Default)
-                        .show()
-                        .unwrap();
+                            )
+                            .icon(icon.clone(), w, h)
+                            .timeout(Timeout::Default)
+                            .show()
+                            .unwrap();
+                    }
                 }
+                _ => (),
             }
-            _ => (),
-        }
-    });
+        })
+        .unwrap();
 }
 
 fn load_icon(path: &Path) -> (Vec<u8>, u32, u32) {
