@@ -18,18 +18,15 @@ fn main() {
         .run(move |event, event_loop| {
             event_loop.set_control_flow(ControlFlow::Poll);
 
-            match event {
-                Event::NewEvents(StartCause::Init) => {
-                    Notification::new()
-                        .appname("App name")
-                        .summary("Critical Error")
-                        .body("Just kidding, this is just the notification example.")
-                        .icon(icon.clone(), w, h)
-                        .timeout(Timeout::Default)
-                        .show()
-                        .unwrap();
-                }
-                _ => (),
+            if let Event::NewEvents(StartCause::Init) = event {
+                Notification::new()
+                    .appname("App name")
+                    .summary("Critical Error")
+                    .body("Just kidding, this is just the notification example.")
+                    .icon(icon.clone(), w, h)
+                    .timeout(Timeout::Default)
+                    .show()
+                    .unwrap();
             }
         })
         .unwrap();

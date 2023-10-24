@@ -18,26 +18,20 @@ fn main() {
         .run(move |event, event_loop| {
             event_loop.set_control_flow(ControlFlow::Poll);
 
-            match event {
-                Event::NewEvents(StartCause::Init) => {
-                    for i in 1..5 {
-                        Notification::new()
-                            .appname("App name")
-                            .summary("Critical Error")
-                            .body(
-                                format!(
-                                    "Just kidding, this is just the notification example {}.",
-                                    i
-                                )
+            if let Event::NewEvents(StartCause::Init) = event {
+                for i in 1..5 {
+                    Notification::new()
+                        .appname("App name")
+                        .summary("Critical Error")
+                        .body(
+                            format!("Just kidding, this is just the notification example {}.", i)
                                 .as_str(),
-                            )
-                            .icon(icon.clone(), w, h)
-                            .timeout(Timeout::Default)
-                            .show()
-                            .unwrap();
-                    }
+                        )
+                        .icon(icon.clone(), w, h)
+                        .timeout(Timeout::Default)
+                        .show()
+                        .unwrap();
                 }
-                _ => (),
             }
         })
         .unwrap();
