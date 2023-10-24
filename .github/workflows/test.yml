@@ -2,32 +2,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-License-Identifier: MIT
 
-name: audit
+name: test
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
   push:
     branches:
       - dev
-    paths:
-      - 'Cargo.lock'
-      - 'Cargo.toml'
   pull_request:
-    paths:
-      - 'Cargo.lock'
-      - 'Cargo.toml'
+
+env:
+  RUST_BACKTRACE: 1
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  audit:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test
