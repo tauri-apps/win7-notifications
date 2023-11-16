@@ -115,7 +115,7 @@ impl Drop for ComInitialized {
 thread_local! {
   static COM_INITIALIZED: ComInitialized = {
     unsafe {
-        CoInitializeEx(ptr::null(), COINIT_APARTMENTTHREADED);
+        CoInitializeEx(ptr::null(), COINIT_APARTMENTTHREADED as _);
         ComInitialized(ptr::null_mut())
     }
   };
