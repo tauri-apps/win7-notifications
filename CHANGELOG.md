@@ -1,5 +1,9 @@
 # Changelog
 
+## \[0.4.3]
+
+- [`c28f8f6`](https://github.com/tauri-apps/win7-notifications/commit/c28f8f61a0c1c906bacc9b5b740d8ea343707afb) Update `windows-sys` crate to `0.52`
+
 ## \[0.4.2]
 
 - [`13e2cbc`](https://github.com/tauri-apps/win7-notifications/commit/13e2cbcdcb59a6dc9c3a6588b9e4f57ac6662fbf)([#55](https://github.com/tauri-apps/win7-notifications/pull/55)) Relax version requirement of `once_cell` crate to `1`.
